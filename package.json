@@ -16,7 +16,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --env-file .env src/app.js --watch",
+    "start": "docker compose up --build",
     "typeorm": "node --no-warnings ./node_modules/typeorm/cli.js",
     "migration:generate": "npm run typeorm -- migration:generate -d ./src/database/data-source.js --outputJs",
     "migration:run": "npm run typeorm -- migration:run -d ./src/database/data-source.js"
