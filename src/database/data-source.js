@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { DataSource } from "typeorm";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -17,7 +19,6 @@ const AppDataSource = new DataSource({
   entities: [__dirname + "/entities/*.js"],
   migrations: [__dirname + "/migrations/*.js"],
   synchronize: !isProduction,
-  ssl: isProduction ? { rejectUnauthorized: false } : false,
   logging: !isProduction,
   migrationsRun: isProduction,
 });
