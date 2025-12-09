@@ -1,4 +1,4 @@
-export const UserRole = {
-  USER: "user",
-  ADMIN: "admin",
+export const SeatType = {
+  STANDARD: "standard",
+  VIP: "VIP",
 };
