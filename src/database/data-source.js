@@ -7,8 +7,6 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const isProduction = process.env.NODE_ENV === "production";
-
 const AppDataSource = new DataSource({
   type: process.env.DB_TYPE || "postgres",
   host: process.env.DB_HOST || "localhost",
@@ -18,9 +16,8 @@ const AppDataSource = new DataSource({
   database: process.env.DB_NAME || "testcinemadb",
   entities: [__dirname + "/entities/*.js"],
   migrations: [__dirname + "/migrations/*.js"],
-  synchronize: !isProduction,
-  logging: !isProduction,
-  migrationsRun: isProduction,
+  synchronize: false,
+  logging: true,
 });
 
 export default AppDataSource;
