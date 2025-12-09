@@ -16,7 +16,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --env-file .env app.js --watch"
+    "start": "node --env-file .env src/app.js --watch"
   },
   "dependencies": {
     "pg": "^8.16.3",

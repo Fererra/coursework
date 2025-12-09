@@ -1,4 +1,4 @@
-import AppDataSource from "./database/data-source";
+import AppDataSource from "./database/data-source.js";
 
 AppDataSource.initialize()
   .then(() => {
