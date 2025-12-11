@@ -101,7 +101,15 @@ class MovieRepository {
         movie.genres = genres;
       }
 
-      return manager.save("Movie", movie);
+      try {
+        await manager.save("Movie", movie);
+        return movie;
+      } catch (error) {
+        if (error.code === "23505") {
+          throw new Error(MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+        }
+        throw error;
+      }
     });
   }
 
