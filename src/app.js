@@ -1,11 +1,13 @@
 import express from "express";
 import AppDataSource from "./database/data-source.js";
+import movieRouter from "./movie/movie.router.js";
 import authRouter from "./auth/auth.router.js";
 
 const app = express();
 
 app.use(express.json());
 
+app.use("/movies", movieRouter);
 app.use("/auth", authRouter);
 
 AppDataSource.initialize()
