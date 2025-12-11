@@ -1,12 +1,14 @@
 import express from "express";
 import AppDataSource from "./database/data-source.js";
 import authRouter from "./auth/auth.router.js";
+import usersRouter from "./users/users.router.js";
 
 const app = express();
 
 app.use(express.json());
 
 app.use("/auth", authRouter);
+app.use("/users", usersRouter);
 
 AppDataSource.initialize()
   .then(() => {
