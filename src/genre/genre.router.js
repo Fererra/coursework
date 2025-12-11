@@ -7,7 +7,7 @@ import { GenreErrorMessages } from "./genre.errors.js";
 
 const genreRouter = Router();
 
-genreRouter.get("/", async (req, res) => {
+genreRouter.get("/", async (_req, res) => {
   try {
     const genres = await genreService.getAllGenres();
     return res.json(genres);
