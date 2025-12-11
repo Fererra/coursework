@@ -18,17 +18,16 @@ class GenreRepository {
   }
 
   async createGenre(data) {
-    return this.#dataSource.transaction(async (manager) => {
-      try {
-        const genre = manager.create("Genre", data);
-        return manager.save("Genre", genre);
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
-        }
-        throw error;
+    try {
+      const genre = await this.#repo.create(data);
+      await this.#repo.save(genre);
+      return genre;
+    } catch (error) {
+      if (error.code === "23505") {
+        throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
       }
-    });
+      throw error;
+    }
   }
 
   async updateGenre(genreId, updateData) {
@@ -45,7 +44,8 @@ class GenreRepository {
       Object.assign(genre, updateData);
 
       try {
-        return manager.save("Genre", genre);
+        await manager.save("Genre", genre);
+        return genre;
       } catch (error) {
         if (error.code === "23505") {
           throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
