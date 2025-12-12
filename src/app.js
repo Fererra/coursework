@@ -3,6 +3,7 @@ import AppDataSource from "./database/data-source.js";
 import authRouter from "./auth/auth.router.js";
 import movieRouter from "./movie/movie.router.js";
 import genreRouter from "./genre/genre.router.js";
+import tariffRouter from "./tariff/tariff.router.js";
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/movies", movieRouter);
 app.use("/genres", genreRouter);
+app.use("/tariffs", tariffRouter);
 
 AppDataSource.initialize()
   .then(() => {

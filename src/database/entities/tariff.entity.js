@@ -13,6 +13,7 @@ export const TariffEntity = new EntitySchema({
     name: {
       type: "varchar",
       length: 30,
+      unique: true,
       nullable: false,
     },
     startTime: {
