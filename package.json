@@ -22,7 +22,10 @@
     "migration:run": "npm run typeorm -- migration:run -d ./src/database/data-source.js"
   },
   "dependencies": {
+    "argon2": "^0.44.0",
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "joi": "^18.0.2",
     "pg": "^8.16.3",
     "typeorm": "^0.3.28"
   }
