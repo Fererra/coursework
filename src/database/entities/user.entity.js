@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { UserRole } from "../../user-role.js";
+import { UserRole } from "../../users/user-role.js";
 
 export const UserEntity = new EntitySchema({
   name: "User",
