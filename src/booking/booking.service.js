@@ -18,6 +18,20 @@ export class BookingService {
   bookSeats(showtimeId, seatIds, userId) {
     return this.#bookingRepository.bookSeats(showtimeId, seatIds, userId);
   }
+
+  async getBookingById(bookingId) {
+    const booking = await this.#bookingRepository.getBookingById(bookingId);
+
+    if (!booking) {
+      throw new Error(BookingErrorMessages.BOOKING_NOT_FOUND);
+    }
+
+    return booking;
+  }
+
+  cancelBooking(bookingId) {
+    return this.#bookingRepository.cancelBooking(bookingId);
+  }
 }
 
 export const bookingService = new BookingService(bookingRepository);
