@@ -6,6 +6,7 @@ import movieRouter from "./movie/movie.router.js";
 import genreRouter from "./genre/genre.router.js";
 import tariffRouter from "./tariff/tariff.router.js";
 import cinemaHallRouter from "./cinema-hall/cinema-hall.router.js";
+import showtimeRouter from "./showtime/showtime.router.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use("/movies", movieRouter);
 app.use("/genres", genreRouter);
 app.use("/tariffs", tariffRouter);
 app.use("/cinema-halls", cinemaHallRouter);
+app.use("/showtimes", showtimeRouter);
 
 AppDataSource.initialize()
   .then(() => {

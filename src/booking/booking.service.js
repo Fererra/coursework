@@ -10,6 +10,14 @@ export class BookingService {
   getUserBookings(userId) {
     return this.#bookingRepository.getBookingsByUserId(userId);
   }
+
+  getBookingsByShowtime(showtimeId) {
+    return this.#bookingRepository.getBookingsByShowtime(showtimeId);
+  }
+
+  bookSeats(showtimeId, seatIds, userId) {
+    return this.#bookingRepository.bookSeats(showtimeId, seatIds, userId);
+  }
 }
 
 export const bookingService = new BookingService(bookingRepository);
