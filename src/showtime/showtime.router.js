@@ -30,6 +30,19 @@ showtimeRouter.get("/:id/seats", async (req, res) => {
   }
 });
 
+showtimeRouter.get("/:id/bookings", async (req, res) => {
+  try {
+    const showtimeId = await idSchema("showtimeId").validateAsync(
+      req.params.id
+    );
+
+    const bookings = await showtimeService.getBookings(showtimeId);
+    res.json(bookings);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
 showtimeRouter.post("/:id/bookings", async (req, res) => {
   try {
     const showtimeId = await idSchema("showtimeId").validateAsync(
