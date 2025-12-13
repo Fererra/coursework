@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { BookingStatus } from "../../booking-status.js";
+import { BookingStatus } from "../../booking/booking-status.js";
 
 export const BookingEntity = new EntitySchema({
   name: "Booking",
@@ -32,12 +32,6 @@ export const BookingEntity = new EntitySchema({
       name: "updated_at",
       type: "timestamp",
       updateDate: true,
-    },
-    deletedAt: {
-      name: "deleted_at",
-      type: "timestamp",
-      nullable: true,
-      deleteDate: true,
     },
   },
   checks: [{ expression: "total_price >= 0" }],
