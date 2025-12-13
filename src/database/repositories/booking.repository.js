@@ -41,6 +41,28 @@ export class BookingRepository {
       .getMany();
   }
 
+  getBookingsByShowtime(showtimeId) {
+    return this.#repo
+      .createQueryBuilder("booking")
+      .leftJoinAndSelect("booking.seats", "bookingSeat")
+      .leftJoinAndSelect("bookingSeat.seat", "seat")
+      .where("booking.showtime = :showtimeId", { showtimeId })
+      .andWhere("booking.deletedAt IS NULL")
+      .andWhere("bookingSeat.deletedAt IS NULL")
+      .andWhere("seat.deletedAt IS NULL")
+      .select([
+        "booking.bookingId",
+        "booking.totalPrice",
+        "booking.status",
+        "booking.bookingDate",
+        "bookingSeat.finalPrice",
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+      ])
+      .getMany();
+  }
+
   async bookSeats(showtimeId, seatIds, userId) {
     return this.#dataSource.transaction(async (manager) => {
       const showtime = await manager
