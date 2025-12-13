@@ -4,16 +4,20 @@ export const BookingSeatEntity = new EntitySchema({
   name: "BookingSeat",
   tableName: "booking_seat",
   columns: {
+    bookingSeatId: {
+      name: "booking_seat_id",
+      type: "int",
+      primary: true,
+      generated: "increment",
+    },
     showtimeId: {
       name: "showtime_id",
       type: "int",
-      primary: true,
       nullable: false,
     },
     seatId: {
       name: "seat_id",
       type: "int",
-      primary: true,
       nullable: false,
     },
     bookingId: {
