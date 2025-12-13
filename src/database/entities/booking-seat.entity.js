@@ -1,4 +1,5 @@
 import { EntitySchema } from "typeorm";
+import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
 
 export const BookingSeatEntity = new EntitySchema({
   name: "BookingSeat",
@@ -37,6 +38,11 @@ export const BookingSeatEntity = new EntitySchema({
       scale: 2,
       nullable: false,
     },
+    status: {
+      type: "enum",
+      enum: Object.values(BookingSeatStatus),
+      default: BookingSeatStatus.ACTIVE,
+    },
     createdAt: {
       name: "created_at",
       type: "timestamp",
@@ -46,12 +52,6 @@ export const BookingSeatEntity = new EntitySchema({
       name: "updated_at",
       type: "timestamp",
       updateDate: true,
-    },
-    deletedAt: {
-      name: "deleted_at",
-      type: "timestamp",
-      nullable: true,
-      deleteDate: true,
     },
   },
   checks: [{ expression: "final_price > 0" }],
