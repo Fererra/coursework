@@ -31,6 +31,29 @@ class ReportsRepository {
       .orderBy('"totalRevenue"', "DESC")
       .getRawMany();
   }
+
+  getUsersSpendingReport() {
+    return this.#dataSource
+      .getRepository("User")
+      .createQueryBuilder("u")
+      .leftJoin("u.bookings", "b", "b.status != :cancelled", {
+        cancelled: BookingStatus.CANCELLED,
+      })
+      .leftJoin("b.seats", "bs", "bs.status = :active", {
+        active: BookingSeatStatus.ACTIVE,
+      })
+      .select([
+        `u.user_id AS "userId"`,
+        `u.first_name || ' ' || u.last_name AS "fullName"`,
+        `COALESCE(SUM(bs.final_price), 0) AS "totalSpent"`,
+        `COUNT(bs.booking_seat_id) AS "totalTickets"`,
+        `ROUND(COALESCE(AVG(bs.final_price), 0), 2) AS "avgTicketPrice"`,
+        `RANK() OVER (ORDER BY SUM(bs.final_price) DESC) AS "spendingRank"`,
+      ])
+      .groupBy(["u.user_id", "u.first_name", "u.last_name"])
+      .orderBy(`"totalSpent"`, "DESC")
+      .getRawMany();
+  }
 }
 
 export const reportsRepository = new ReportsRepository(AppDataSource);
