@@ -55,6 +55,14 @@ export const BookingSeatEntity = new EntitySchema({
     },
   },
   checks: [{ expression: "final_price > 0" }],
+  indices: [
+    {
+      name: "partial_unique_showtime_seat",
+      unique: true,
+      columns: ["showtimeId", "seatId"],
+      where: `"status" = '${BookingSeatStatus.ACTIVE}'`,
+    },
+  ],
   relations: {
     showtime: {
       type: "many-to-one",
