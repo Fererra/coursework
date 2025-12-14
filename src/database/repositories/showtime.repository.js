@@ -1,4 +1,5 @@
 import { ShowtimeErrorMessages } from "../../showtime/showtime.errors.js";
+import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
 import AppDataSource from "../data-source.js";
 
 class ShowtimeRepository {
@@ -41,7 +42,10 @@ class ShowtimeRepository {
 
     const bookedSeats = await this.#dataSource
       .getRepository("BookingSeat")
-      .find({ select: ["seatId"], where: { showtimeId, deletedAt: null } });
+      .find({
+        select: ["seatId"],
+        where: { showtimeId, status: BookingSeatStatus.ACTIVE },
+      });
 
     const seats = hallSeats.map((seat) => ({
       seatId: seat.seatId,
@@ -114,7 +118,10 @@ class ShowtimeRepository {
         .leftJoinAndSelect(
           "showtime.bookings",
           "booking",
-          "booking.deletedAt IS NULL"
+          "booking.status != :deletedStatus",
+          {
+            deletedStatus: BookingSeatStatus.CANCELLED,
+          }
         )
         .where("showtime.showtime_id = :showtimeId", { showtimeId })
         .andWhere("showtime.deleted_at IS NULL")

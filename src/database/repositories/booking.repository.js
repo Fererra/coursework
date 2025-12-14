@@ -1,4 +1,8 @@
 import AppDataSource from "../data-source.js";
+import { BookingErrorMessages } from "../../booking/booking.errors.js";
+import { BookingStatus } from "../../booking/booking-status.js";
+import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
+import { In } from "typeorm";
 
 export class BookingRepository {
   #repo;
@@ -12,16 +16,12 @@ export class BookingRepository {
   getBookingsByUserId(userId) {
     return this.#repo
       .createQueryBuilder("booking")
+      .withDeleted()
       .leftJoinAndSelect("booking.showtime", "showtime")
       .leftJoinAndSelect("showtime.movie", "movie")
       .leftJoinAndSelect("booking.seats", "bookingSeat")
       .leftJoinAndSelect("bookingSeat.seat", "seat")
       .where("booking.user = :userId", { userId })
-      .andWhere("booking.deletedAt IS NULL")
-      .andWhere("showtime.deletedAt IS NULL")
-      .andWhere("movie.deletedAt IS NULL")
-      .andWhere("bookingSeat.deletedAt IS NULL")
-      .andWhere("seat.deletedAt IS NULL")
       .select([
         "booking.bookingId",
         "booking.totalPrice",
@@ -37,19 +37,16 @@ export class BookingRepository {
         "seat.rowNumber",
         "seat.seatNumber",
       ])
-
       .getMany();
   }
 
   getBookingsByShowtime(showtimeId) {
     return this.#repo
       .createQueryBuilder("booking")
+      .withDeleted()
       .leftJoinAndSelect("booking.seats", "bookingSeat")
       .leftJoinAndSelect("bookingSeat.seat", "seat")
       .where("booking.showtime = :showtimeId", { showtimeId })
-      .andWhere("booking.deletedAt IS NULL")
-      .andWhere("bookingSeat.deletedAt IS NULL")
-      .andWhere("seat.deletedAt IS NULL")
       .select([
         "booking.bookingId",
         "booking.totalPrice",
@@ -83,7 +80,7 @@ export class BookingRepository {
         .select(["bs.seatId"])
         .where("bs.showtime_id = :showtimeId", { showtimeId })
         .andWhere("bs.seat_id IN (:...seatIds)", { seatIds })
-        .andWhere("bs.deleted_at IS NULL")
+        .andWhere("bs.status = :status", { status: BookingSeatStatus.ACTIVE })
         .getMany();
 
       if (existingSeats.length > 0) {
@@ -164,6 +161,67 @@ export class BookingRepository {
           finalPrice: s.finalPrice,
         })),
       };
+    });
+  }
+
+  async getBookingById(bookingId) {
+    return this.#repo
+      .createQueryBuilder("booking")
+      .leftJoinAndSelect("booking.showtime", "showtime")
+      .leftJoinAndSelect("showtime.movie", "movie")
+      .leftJoinAndSelect("booking.seats", "bookingSeat")
+      .leftJoinAndSelect("bookingSeat.seat", "seat")
+      .where("booking.bookingId = :bookingId", { bookingId })
+      .andWhere("booking.status != :deletedStatus", {
+        deletedStatus: BookingStatus.CANCELLED,
+      })
+      .andWhere("showtime.deletedAt IS NULL")
+      .andWhere("movie.deletedAt IS NULL")
+      .andWhere("bookingSeat.deletedAt IS NULL")
+      .andWhere("seat.deletedAt IS NULL")
+      .select([
+        "booking.bookingId",
+        "booking.totalPrice",
+        "booking.status",
+        "booking.bookingDate",
+        "showtime.showtimeId",
+        "showtime.showDate",
+        "showtime.showTime",
+        "movie.movieId",
+        "movie.title",
+        "bookingSeat.finalPrice",
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+      ])
+      .getOne();
+  }
+
+  async cancelBooking(bookingId) {
+    return this.#dataSource.transaction(async (manager) => {
+      const booking = await manager.findOne("Booking", {
+        where: {
+          bookingId,
+          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        },
+        relations: ["seats"],
+      });
+
+      if (!booking) throw new Error(BookingErrorMessages.BOOKING_NOT_FOUND);
+
+      await manager.update(
+        "Booking",
+        { bookingId },
+        { status: BookingStatus.CANCELLED }
+      );
+
+      await manager.update(
+        "BookingSeat",
+        { bookingId },
+        { status: BookingSeatStatus.CANCELLED }
+      );
+
+      return { message: "Booking cancelled successfully" };
     });
   }
 }
