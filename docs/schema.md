@@ -161,6 +161,11 @@
 
 - `UNIQUE` на (`hall_id`, `show_date`, `show_time`)
 
+Індекси:
+
+- `idx_showtime_movie_id` на `(movie_id) WHERE deleted_at IS NULL` (забезпечує швидкий пошук усіх активних сеансів для конкретного фільму)
+- `idx_showtime_hall_id` на `(hall_id) WHERE deleted_at IS NULL` (забезпечує швидкий пошук усіх активних сеансів для конкретного залу)
+
 Зв'язки:
 
 - Багато-до-одного з `movie` (сеанс належить одному фільму)
@@ -185,6 +190,11 @@
 | booking_date | TIMESTAMP | DEFAULT NOW() | Час створення бронювання |
 | updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 
+Індекси:
+
+- `idx_booking_user_id` на `(user_id)` (забезпечує швидкий пошук усіх бронювань конкретного користувача)
+- `idx_booking_showtime_id` на `(showtime_id)` (забезпечує швидкий пошук усіх бронювань для конкретного сеансу)
+
 Зв'язки:
 
 - Багато-до-одного з `user` (бронювання належить одному користувачу)
@@ -206,13 +216,15 @@
 | booking_id | INT | NOT NULL | Ідентифікатор бронювання |
 | tariff_id | INT | NOT NULL | Ідентифікатор тарифу |
 | final_price | DECIMAL(7,2) | CHECK (> 0), NOT NULL | Фінальна ціна |
-| status | ENUM('active', 'cancelled') | DEFAULT 'active' | Статус місця в бронюванні
+| status | ENUM('active', 'cancelled') | DEFAULT 'active' | Статус місця в бронюванні |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
 | updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 
 Індекси:
 
 - `partial_unique_showtime_seat` на `(showtime_id, seat_id) WHERE status = 'active'` (забезпечує унікальність активного бронювання місця на один сеанс)
+- `idx_booking_seat_tariff_id_active` на `(tariff_id) WHERE status = 'active'` (забезпечує швидкий пошук активних бронювань по тарифу)
+- `idx_booking_seat_booking_id` на `(booking_id)` (забезпечує швидкий пошук всіх місць у конкретному бронюванні)
 
 Зв'язки:
 
