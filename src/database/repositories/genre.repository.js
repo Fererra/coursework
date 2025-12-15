@@ -1,5 +1,6 @@
 import AppDataSource from "../data-source.js";
 import { GenreErrorMessages } from "../../modules/genre/genre.errors.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class GenreRepository {
   #repo;
@@ -19,46 +20,36 @@ class GenreRepository {
 
   async createGenre(data) {
     try {
-      const genre = await this.#repo.create(data);
-      await this.#repo.save(genre);
-      return genre;
+      return await this.#repo.save(data);
     } catch (error) {
-      if (error.code === "23505") {
-        throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
-      }
-      throw error;
+      handleDatabaseError(error, GenreErrorMessages.GENRE_ALREADY_EXISTS);
     }
   }
 
   async updateGenre(genreId, updateData) {
-    return this.#dataSource.transaction(async (manager) => {
-      const genre = await manager.findOne("Genre", {
-        select: ["genreId", "name"],
-        where: { genreId, deletedAt: null },
+    try {
+      return await this.#dataSource.transaction(async (manager) => {
+        const genre = await manager.findOne("Genre", {
+          where: { genreId, deletedAt: null },
+          lock: { mode: "pessimistic_write" },
+        });
+
+        if (!genre) throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);
+
+        Object.assign(genre, updateData);
+
+        return await manager.save("Genre", genre);
       });
-
-      if (!genre) {
-        throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);
-      }
-
-      Object.assign(genre, updateData);
-
-      try {
-        await manager.save("Genre", genre);
-        return genre;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
-        }
-        throw error;
-      }
-    });
+    } catch (error) {
+      handleDatabaseError(error, GenreErrorMessages.GENRE_ALREADY_EXISTS);
+    }
   }
 
   async deleteGenre(genreId) {
     return this.#dataSource.transaction(async (manager) => {
       const genre = await manager.findOne("Genre", {
         where: { genreId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!genre) throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);
