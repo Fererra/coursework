@@ -32,7 +32,7 @@ class CinemaHallRepository {
         "seats.seatType",
         "seats.basePrice",
       ])
-      .where("cinemaHall.hallId = :cinemaHallId", { cinemaHallId: hallId })
+      .where("cinemaHall.hallId = :hallId", { hallId })
       .andWhere("cinemaHall.deletedAt IS NULL")
       .getOne();
   }
@@ -73,19 +73,29 @@ class CinemaHallRepository {
 
         const cinemaHall = await manager.findOne("CinemaHall", {
           where: { hallId, deletedAt: null },
-          relations: ["seats"],
           lock: { mode: "pessimistic_write" },
         });
 
         if (!cinemaHall)
           throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
 
+        cinemaHall.seats = await manager.find("Seat", {
+          where: { hallId, deletedAt: null },
+        });
+
         Object.assign(cinemaHall, updateHallData);
 
         if (seats) {
+          const seatIdsToDelete = seats
+            .filter((s) => s.seatId && s.deleted)
+            .map((s) => s.seatId);
+
+          if (seatIdsToDelete.length > 0) {
+            await manager.softDelete("Seat", { seatId: In(seatIdsToDelete) });
+          }
+
           for (const seatDto of seats) {
-            console.log(seatDto.seatId);
-            if (seatDto.seatId) {
+            if (seatDto.seatId && !seatDto.deleted) {
               const existingSeat = cinemaHall.seats.find(
                 (s) => s.seatId === seatDto.seatId
               );
@@ -93,18 +103,14 @@ class CinemaHallRepository {
               if (!existingSeat)
                 throw new Error(CinemaHallErrorMessages.SEAT_NOT_FOUND);
 
-              console.log(seatDto);
-
-              if (seatDto.deleted) {
-                await manager.softDelete("Seat", { seatId: seatDto.seatId });
-              } else {
-                Object.assign(existingSeat, seatDto);
-              }
+              Object.assign(existingSeat, seatDto);
             } else {
               const newSeat = manager.create("Seat", {
                 ...seatDto,
                 hallId: cinemaHall.hallId,
               });
+
+              await manager.save("Seat", newSeat);
 
               cinemaHall.seats.push(newSeat);
             }
@@ -132,25 +138,29 @@ class CinemaHallRepository {
       const hall = await manager
         .getRepository("CinemaHall")
         .createQueryBuilder("cinemahall")
-        .leftJoinAndSelect("cinemahall.seats", "seat", "seat.deletedAt IS NULL")
-        .leftJoinAndSelect(
-          "cinemahall.showtimes",
-          "showtime",
-          "showtime.deletedAt IS NULL"
-        )
-        .where("cinemahall.hallId = :cinemaHallId", { hallId })
+        .where("cinemahall.hallId = :hallId", { hallId })
         .andWhere("cinemahall.deletedAt IS NULL")
         .setLock("pessimistic_write")
         .getOne();
 
       if (!hall) throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
 
+      hall.showtimes = await manager
+        .getRepository("Showtime")
+        .find({ where: { hallId, deletedAt: null } });
+
       if (hall.showtimes.length > 0) {
         throw new Error(CinemaHallErrorMessages.CINEMA_HALL_DELETE_ERROR);
       }
 
-      for (const seat of hall.seats) {
-        await manager.softDelete("Seat", { seatId: seat.seatId });
+      hall.seats = await manager
+        .getRepository("Seat")
+        .find({ where: { hallId, deletedAt: null } });
+
+      const seatIdsToDelete = hall.seats.map((s) => s.seatId);
+
+      if (seatIdsToDelete.length > 0) {
+        await manager.softDelete("Seat", { seatId: In(seatIdsToDelete) });
       }
 
       await manager.softDelete("CinemaHall", { hallId });
