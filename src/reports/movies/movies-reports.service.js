@@ -10,6 +10,10 @@ class MoviesReportsService {
   getMoviesRevenueReport() {
     return this.#reportsRepository.getMoviesRevenueReport();
   }
+
+  getMoviesAttendanceReport() {
+    return this.#reportsRepository.getMoviesAttendanceReport();
+  }
 }
 
 export const moviesReportsService = new MoviesReportsService(reportsRepository);

@@ -8,4 +8,9 @@ moviesReportsRouter.get("/revenue", async (_req, res) => {
   return res.json(report);
 });
 
+moviesReportsRouter.get("/attendance", async (_req, res) => {
+  const report = await moviesReportsService.getMoviesAttendanceReport();
+  return res.json(report);
+});
+
 export default moviesReportsRouter;
