@@ -1,14 +1,14 @@
 import express from "express";
 import AppDataSource from "./database/data-source.js";
-import authRouter from "./auth/auth.router.js";
-import usersRouter from "./users/users.router.js";
-import movieRouter from "./movie/movie.router.js";
-import genreRouter from "./genre/genre.router.js";
-import tariffRouter from "./tariff/tariff.router.js";
-import cinemaHallRouter from "./cinema-hall/cinema-hall.router.js";
-import showtimeRouter from "./showtime/showtime.router.js";
-import bookingRouter from "./booking/booking.router.js";
-import reportsRouter from "./reports/reports.router.js";
+import authRouter from "./modules/auth/auth.router.js";
+import usersRouter from "./modules/users/users.router.js";
+import movieRouter from "./modules/movie/movie.router.js";
+import genreRouter from "./modules/genre/genre.router.js";
+import tariffRouter from "./modules/tariff/tariff.router.js";
+import cinemaHallRouter from "./modules/cinema-hall/cinema-hall.router.js";
+import showtimeRouter from "./modules/showtime/showtime.router.js";
+import bookingRouter from "./modules/booking/booking.router.js";
+import reportsRouter from "./modules/reports/reports.router.js";
 
 const app = express();
 

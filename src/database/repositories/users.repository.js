@@ -1,6 +1,6 @@
-import { UserRole } from "../../users/user-role.js";
+import { UserRole } from "../../modules/users/user-role.js";
 import AppDataSource from "../data-source.js";
-import { AuthErrorMessages } from "../../auth/auth.errors.js";
+import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
 
 class UsersRepository {
   #repo;

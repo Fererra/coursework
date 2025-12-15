@@ -1,7 +1,7 @@
 import AppDataSource from "../data-source.js";
-import { BookingErrorMessages } from "../../booking/booking.errors.js";
-import { BookingStatus } from "../../booking/booking-status.js";
-import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
+import { BookingErrorMessages } from "../../modules/booking/booking.errors.js";
+import { BookingStatus } from "../../modules/booking/booking-status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
 import { In } from "typeorm";
 
 export class BookingRepository {

@@ -1,5 +1,5 @@
-import { ShowtimeErrorMessages } from "../../showtime/showtime.errors.js";
-import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
+import { ShowtimeErrorMessages } from "../../modules/showtime/showtime.errors.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
 import AppDataSource from "../data-source.js";
 
 class ShowtimeRepository {

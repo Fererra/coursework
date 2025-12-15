@@ -1,5 +1,5 @@
 import AppDataSource from "../data-source.js";
-import { CinemaHallErrorMessages } from "../../cinema-hall/cinema-hall.errors.js";
+import { CinemaHallErrorMessages } from "../../modules/cinema-hall/cinema-hall.errors.js";
 
 class CinemaHallRepository {
   #repo;

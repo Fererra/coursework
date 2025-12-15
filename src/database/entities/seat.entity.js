@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { SeatType } from "../../seat-type.js";
+import { SeatType } from "../../modules/cinema-hall/seat-type.js";
 
 export const SeatEntity = new EntitySchema({
   name: "Seat",
