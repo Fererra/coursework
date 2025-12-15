@@ -16,7 +16,6 @@ export class BookingRepository {
   getBookingsByUserId(userId) {
     return this.#repo
       .createQueryBuilder("booking")
-      .withDeleted()
       .leftJoinAndSelect("booking.showtime", "showtime")
       .leftJoinAndSelect("showtime.movie", "movie")
       .leftJoinAndSelect("booking.seats", "bookingSeat")
@@ -97,7 +96,7 @@ export class BookingRepository {
         .getMany();
 
       if (seats.length !== seatIds.length) {
-        throw new Error(BookingErrorMessages.SOME_SEATS_NOT_FOUND);
+        throw new Error("Some seats not found");
       }
 
       const now = new Date();
@@ -118,7 +117,7 @@ export class BookingRepository {
         .getOne();
 
       if (!tariff) {
-        throw new Error(BookingErrorMessages.NO_ACTIVE_TARIFF);
+        throw new Error("No active tariff found");
       }
 
       let totalPrice = 0;
