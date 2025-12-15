@@ -15,7 +15,8 @@ class ShowtimeRepository {
   getAllShowtimes() {
     return this.#repo
       .createQueryBuilder("showtime")
-      .leftJoinAndSelect("showtime.movie", "movie")
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .where("showtime.deletedAt IS NULL")
       .select([
         "showtime.showtimeId",
         "showtime.showDate",
@@ -33,7 +34,7 @@ class ShowtimeRepository {
     });
 
     if (!showtime) {
-      throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
+      throw new Error("Showtime not found");
     }
 
     const hallSeats = await this.#dataSource.getRepository("Seat").find({
@@ -65,10 +66,22 @@ class ShowtimeRepository {
   }
 
   getShowtimeDetails(showtimeId) {
-    return this.#repo.findOne({
-      select: ["showtimeId", "hallId", "movieId", "showDate", "showTime"],
-      where: { showtimeId, deletedAt: null },
-    });
+    return this.#repo
+      .createQueryBuilder("showtime")
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .leftJoinAndSelect("showtime.hall", "hall", "hall.deletedAt IS NULL")
+      .where("showtime.showtimeId = :showtimeId", { showtimeId })
+      .andWhere("showtime.deletedAt IS NULL")
+      .select([
+        "showtime.showtimeId",
+        "showtime.showDate",
+        "showtime.showTime",
+        "movie.movieId",
+        "movie.title",
+        "hall.hallId",
+        "hall.hallNumber",
+      ])
+      .getOne();
   }
 
   async createShowtime(data) {
