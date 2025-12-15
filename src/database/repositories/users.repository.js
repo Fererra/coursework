@@ -16,7 +16,6 @@ class UsersRepository {
     return this.#repo.findOne({
       select: ["userId", "email", "password"],
       where: { email },
-      withDeleted: true,
     });
   }
 
