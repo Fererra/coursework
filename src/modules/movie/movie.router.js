@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { createMovieDto } from "./dto/create-movie.dto.js";
 import { updateMovieDto } from "./dto/update-movie.dto.js";
 import { movieService } from "./movie.service.js";

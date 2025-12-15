@@ -1,5 +1,5 @@
 import AppDataSource from "../data-source.js";
-import { TariffErrorMessages } from "../../tariff/tariff.errors.js";
+import { TariffErrorMessages } from "../../modules/tariff/tariff.errors.js";
 
 class TariffRepository {
   #repo;

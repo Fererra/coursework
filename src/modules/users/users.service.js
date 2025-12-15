@@ -1,6 +1,6 @@
-import { AuthErrorMessages } from "../auth/auth.errors.js";
-import { usersRepository } from "../database/repositories/users.repository.js";
-import { bookingService } from "../booking/booking.service.js";
+import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
+import { usersRepository } from "../../database/repositories/users.repository.js";
+import { bookingService } from "../../modules/booking/booking.service.js";
 
 class UsersService {
   #usersRepository;

@@ -1,4 +1,4 @@
-import { reportsRepository } from "../../database/repositories/reports.repository.js";
+import { reportsRepository } from "../../../database/repositories/reports.repository.js";
 
 class MoviesReportsService {
   #reportsRepository;

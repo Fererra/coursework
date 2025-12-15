@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createGenreDto } from "./dto/create-genre.dto.js";
 import { updateGenreDto } from "./dto/update-genre.dto.js";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { genreService } from "./genre.service.js";
 import { GenreErrorMessages } from "./genre.errors.js";
 

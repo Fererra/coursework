@@ -1,5 +1,5 @@
 import AppDataSource from "../data-source.js";
-import { MovieErrorMessages } from "../../movie/movie.errors.js";
+import { MovieErrorMessages } from "../../modules/movie/movie.errors.js";
 import { In } from "typeorm";
 
 class MovieRepository {

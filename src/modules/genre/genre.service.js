@@ -1,4 +1,4 @@
-import { genreRepository } from "./../database/repositories/genre.repository.js";
+import { genreRepository } from "../../database/repositories/genre.repository.js";
 
 class GenreService {
   #genreRepository;

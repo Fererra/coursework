@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { bookingService } from "./booking.service.js";
 import { BookingErrorMessages } from "./booking.errors.js";
 

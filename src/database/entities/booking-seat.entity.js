@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { BookingSeatStatus } from "../../booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
 
 export const BookingSeatEntity = new EntitySchema({
   name: "BookingSeat",

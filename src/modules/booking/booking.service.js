@@ -1,4 +1,4 @@
-import { bookingRepository } from "../database/repositories/booking.repository.js";
+import { bookingRepository } from "../../database/repositories/booking.repository.js";
 
 export class BookingService {
   #bookingRepository;

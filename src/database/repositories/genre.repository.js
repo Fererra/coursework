@@ -1,5 +1,5 @@
 import AppDataSource from "../data-source.js";
-import { GenreErrorMessages } from "../../genre/genre.errors.js";
+import { GenreErrorMessages } from "../../modules/genre/genre.errors.js";
 
 class GenreRepository {
   #repo;

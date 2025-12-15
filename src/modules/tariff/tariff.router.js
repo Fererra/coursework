@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createTariffDto } from "./dto/create-tariff.dto.js";
 import { updateTariffDto } from "./dto/update-tariff.dto.js";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { tariffService } from "./tariff.service.js";
 import { TariffErrorMessages } from "./tariff.errors.js";
 

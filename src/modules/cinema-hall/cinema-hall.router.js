@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createCinemaHallDto } from "./dto/create-cinema-hall.dto.js";
 import { updateCinemaHallDto } from "./dto/update-cinema-hall.dto.js";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { cinemaHallService } from "./cinema-hall.service.js";
 import { CinemaHallErrorMessages } from "./cinema-hall.errors.js";
 

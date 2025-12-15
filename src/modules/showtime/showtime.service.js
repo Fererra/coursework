@@ -1,6 +1,6 @@
-import { showtimeRepository } from "../database/repositories/showtime.repository.js";
+import { showtimeRepository } from "../../database/repositories/showtime.repository.js";
 import { ShowtimeErrorMessages } from "./showtime.errors.js";
-import { bookingService } from "../booking/booking.service.js";
+import { bookingService } from "../../modules/booking/booking.service.js";
 
 class ShowtimeService {
   #showtimeRepository;

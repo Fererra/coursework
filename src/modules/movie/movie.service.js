@@ -1,4 +1,4 @@
-import { movieRepository } from "./../database/repositories/movie.repository.js";
+import { movieRepository } from "./../../database/repositories/movie.repository.js";
 import { MovieErrorMessages } from "./movie.errors.js";
 
 class MovieService {

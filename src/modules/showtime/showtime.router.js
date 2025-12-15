@@ -4,7 +4,7 @@ import { ShowtimeErrorMessages } from "./showtime.errors.js";
 import { createShowtimeDto } from "./dto/create-showtime.dto.js";
 import { updateShowtimeDto } from "./dto/update-showtime.dto.js";
 import { bookSeatsDto } from "./dto/book-seats.dto.js";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 
 const showtimeRouter = Router();
 

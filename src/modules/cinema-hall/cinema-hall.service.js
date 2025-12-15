@@ -1,4 +1,4 @@
-import { cinemaHallRepository } from "./../database/repositories/cinema-hall.repository.js";
+import { cinemaHallRepository } from "../../database/repositories/cinema-hall.repository.js";
 import { CinemaHallErrorMessages } from "./cinema-hall.errors.js";
 
 class CinemaHallService {

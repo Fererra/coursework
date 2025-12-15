@@ -1,4 +1,4 @@
-import { tariffRepository } from "./../database/repositories/tariff.repository.js";
+import { tariffRepository } from "../../database/repositories/tariff.repository.js";
 
 class TariffService {
   #tariffRepository;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { idSchema } from "../id.schema.js";
+import { idSchema } from "../../common/validation/id.schema.js";
 import { usersService } from "./users.service.js";
 import { updateUserDto } from "./dto/update-user.dto.js";
 import { AuthErrorMessages } from "../auth/auth.errors.js";
