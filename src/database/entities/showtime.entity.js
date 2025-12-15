@@ -48,6 +48,18 @@ export const ShowtimeEntity = new EntitySchema({
     },
   },
   uniques: [{ columns: ["hallId", "showDate", "showTime"] }],
+  indices: [
+    {
+      name: "idx_showtime_movie_id",
+      columns: ["movieId"],
+      where: '"deleted_at" IS NULL',
+    },
+    {
+      name: "idx_showtime_hall_id",
+      columns: ["hallId"],
+      where: '"deleted_at" IS NULL',
+    },
+  ],
   relations: {
     movie: {
       type: "many-to-one",
