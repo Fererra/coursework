@@ -1,5 +1,6 @@
 import AppDataSource from "../data-source.js";
 import { CinemaHallErrorMessages } from "../../modules/cinema-hall/cinema-hall.errors.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class CinemaHallRepository {
   #repo;
@@ -37,8 +38,8 @@ class CinemaHallRepository {
   }
 
   async createCinemaHall(data) {
-    return this.#dataSource.transaction(async (manager) => {
-      try {
+    try {
+      return await this.#dataSource.transaction(async (manager) => {
         const { seats, ...cinemaHallData } = data;
 
         const cinemaHall = manager.create("CinemaHall", cinemaHallData);
@@ -51,65 +52,65 @@ class CinemaHallRepository {
               hallId: cinemaHall.hallId,
             })
           );
-
           cinemaHall.seats = seatEntities;
-
           await manager.save("Seat", seatEntities);
         }
 
         return cinemaHall;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS);
-        }
-        throw error;
-      }
-    });
+      });
+    } catch (error) {
+      handleDatabaseError(
+        error,
+        CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS
+      );
+    }
   }
 
   async updateCinemaHall(hallId, updateData) {
-    return this.#dataSource.transaction(async (manager) => {
-      const { seats, ...updateHallData } = updateData;
+    try {
+      return await this.#dataSource.transaction(async (manager) => {
+        const { seats, ...updateHallData } = updateData;
 
-      const cinemaHall = await manager.findOne("CinemaHall", {
-        where: { hallId, deletedAt: null },
-        relations: ["seats"],
-      });
+        const cinemaHall = await manager.findOne("CinemaHall", {
+          where: { hallId, deletedAt: null },
+          relations: ["seats"],
+          lock: { mode: "pessimistic_write" },
+        });
 
-      if (!cinemaHall)
-        throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
+        if (!cinemaHall)
+          throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
 
-      Object.assign(cinemaHall, updateHallData);
+        Object.assign(cinemaHall, updateHallData);
 
-      if (seats) {
-        for (const seatDto of seats) {
-          console.log(seatDto.seatId);
-          if (seatDto.seatId) {
-            const existingSeat = cinemaHall.seats.find(
-              (s) => s.seatId === seatDto.seatId
-            );
+        if (seats) {
+          for (const seatDto of seats) {
+            console.log(seatDto.seatId);
+            if (seatDto.seatId) {
+              const existingSeat = cinemaHall.seats.find(
+                (s) => s.seatId === seatDto.seatId
+              );
 
-            if (!existingSeat) throw new Error("Seat not found");
+              if (!existingSeat)
+                throw new Error(CinemaHallErrorMessages.SEAT_NOT_FOUND);
 
-            console.log(seatDto);
+              console.log(seatDto);
 
-            if (seatDto.deleted) {
-              await manager.softDelete("Seat", { seatId: seatDto.seatId });
+              if (seatDto.deleted) {
+                await manager.softDelete("Seat", { seatId: seatDto.seatId });
+              } else {
+                Object.assign(existingSeat, seatDto);
+              }
             } else {
-              Object.assign(existingSeat, seatDto);
-            }
-          } else {
-            const newSeat = manager.create("Seat", {
-              ...seatDto,
-              hallId: cinemaHall.hallId,
-            });
+              const newSeat = manager.create("Seat", {
+                ...seatDto,
+                hallId: cinemaHall.hallId,
+              });
 
-            cinemaHall.seats.push(newSeat);
+              cinemaHall.seats.push(newSeat);
+            }
           }
         }
-      }
 
-      try {
         await manager.save("CinemaHall", cinemaHall);
 
         return manager.findOne("CinemaHall", {
@@ -117,13 +118,13 @@ class CinemaHallRepository {
           relations: ["seats"],
           withDeleted: false,
         });
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS);
-        }
-        throw error;
-      }
-    });
+      });
+    } catch (error) {
+      handleDatabaseError(
+        error,
+        CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS
+      );
+    }
   }
 
   async deleteCinemaHall(hallId) {
@@ -139,6 +140,7 @@ class CinemaHallRepository {
         )
         .where("cinemahall.hallId = :cinemaHallId", { hallId })
         .andWhere("cinemahall.deletedAt IS NULL")
+        .setLock("pessimistic_write")
         .getOne();
 
       if (!hall) throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
