@@ -1,6 +1,7 @@
 import { UserRole } from "../../modules/users/user-role.js";
 import AppDataSource from "../data-source.js";
 import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class UsersRepository {
   #repo;
@@ -19,13 +20,11 @@ class UsersRepository {
     });
   }
 
-  createUser(data) {
+  async createUser(data) {
     try {
-      return this.#repo.save(data);
+      return await this.#repo.save(data);
     } catch (error) {
-      if (error.code === "23505") {
-        throw new Error(AuthErrorMessages.USER_ALREADY_EXISTS);
-      }
+      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
     }
   }
 
@@ -37,33 +36,32 @@ class UsersRepository {
   }
 
   async updateUserData(userId, updateData) {
-    return this.#dataSource.transaction(async (manager) => {
-      const user = await manager.findOne("User", {
-        select: ["userId", "firstName", "lastName", "email"],
-        where: { userId, deletedAt: null },
-      });
+    try {
+      return this.#dataSource.transaction(async (manager) => {
+        const user = await manager.findOne("User", {
+          select: ["userId", "firstName", "lastName", "email"],
+          where: { userId, deletedAt: null },
+          lock: { mode: "pessimistic_write" },
+        });
 
-      if (!user) {
-        throw new Error(AuthErrorMessages.USER_NOT_FOUND);
-      }
-
-      Object.assign(user, updateData);
-
-      try {
-        return await manager.save("User", user);
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(AuthErrorMessages.USER_ALREADY_EXISTS);
+        if (!user) {
+          throw new Error(AuthErrorMessages.USER_NOT_FOUND);
         }
-        throw error;
-      }
-    });
+
+        Object.assign(user, updateData);
+
+        return await manager.save("User", user);
+      });
+    } catch (error) {
+      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
+    }
   }
 
   async deleteUser(userId) {
     return this.#dataSource.transaction(async (manager) => {
       const user = await manager.findOne("User", {
         where: { userId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!user) {
@@ -71,7 +69,7 @@ class UsersRepository {
       }
 
       if (user.role === UserRole.ADMIN) {
-        throw new Error("Cannot delete admin accounts");
+        throw new Error(AuthErrorMessages.ADMIN_DELETION_ERROR);
       }
 
       await manager.softDelete("User", { userId });
