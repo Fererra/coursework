@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { idSchema } from "../../common/validation/id.schema.js";
+import { idSchema } from "../../common/id.schema.js";
 import { usersService } from "./users.service.js";
 import { updateUserDto } from "./dto/update-user.dto.js";
 import { AuthErrorMessages } from "../auth/auth.errors.js";
@@ -56,6 +56,8 @@ usersRouter.delete("/:id", async (req, res) => {
 const handleError = (res, error) => {
   const statusMap = {
     [AuthErrorMessages.USER_NOT_FOUND]: 404,
+    [AuthErrorMessages.ADMIN_DELETION_ERROR]: 403,
+    [AuthErrorMessages.USER_HAS_BOOKINGS]: 403,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });

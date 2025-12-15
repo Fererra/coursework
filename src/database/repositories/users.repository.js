@@ -64,6 +64,12 @@ class UsersRepository {
         lock: { mode: "pessimistic_write" },
       });
 
+      const bookingsCount = await manager.count("Booking", {
+        where: { user: { userId } },
+      });
+      if (bookingsCount > 0)
+        throw new Error(AuthErrorMessages.USER_HAS_BOOKINGS);
+
       if (!user) {
         throw new Error(AuthErrorMessages.USER_NOT_FOUND);
       }
