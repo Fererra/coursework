@@ -1,6 +1,6 @@
 import AppDataSource from "../data-source.js";
 import { BookingStatus } from "../../modules/booking/booking-status.js";
-import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 
 class ReportsRepository {
   #dataSource;

@@ -1,5 +1,5 @@
 import { ShowtimeErrorMessages } from "../../modules/showtime/showtime.errors.js";
-import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 import AppDataSource from "../data-source.js";
 import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
