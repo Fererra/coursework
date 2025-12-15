@@ -1,6 +1,8 @@
 import AppDataSource from "../data-source.js";
 import { MovieErrorMessages } from "../../modules/movie/movie.errors.js";
 import { In } from "typeorm";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
+import { GenreErrorMessages } from "../../modules/genre/genre.errors.js";
 
 class MovieRepository {
   #repo;
@@ -38,12 +40,11 @@ class MovieRepository {
   }
 
   async createMovie(data) {
-    return this.#dataSource.transaction(async (manager) => {
-      try {
+    try {
+      return await this.#dataSource.transaction(async (manager) => {
         const { genreIds, ...movieData } = data;
 
         const movie = manager.create("Movie", movieData);
-        await manager.save("Movie", movie);
 
         if (genreIds && genreIds.length > 0) {
           const genres = await manager.find("Genre", {
@@ -51,85 +52,76 @@ class MovieRepository {
           });
 
           if (genres.length !== genreIds.length) {
-            throw new Error("Some genres not found");
+            throw new Error(GenreErrorMessages.SOME_GENRES_NOT_FOUND);
           }
 
           movie.genres = genres;
-          await manager.save("Movie", movie);
         }
 
-        return movie;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(MovieErrorMessages.MOVIE_ALREADY_EXISTS);
-        }
-        throw error;
-      }
-    });
+        return await manager.save("Movie", movie);
+      });
+    } catch (error) {
+      handleDatabaseError(error, MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+    }
   }
 
   async updateMovie(movieId, updateData) {
-    return this.#dataSource.transaction(async (manager) => {
-      const movie = await manager.findOne("Movie", {
-        select: [
-          "movieId",
-          "title",
-          "ageLimit",
-          "durationMin",
-          "releaseYear",
-          "description",
-        ],
-        where: { movieId, deletedAt: null },
-        relations: ["genres"],
-      });
+    try {
+      return this.#dataSource.transaction(async (manager) => {
+        const { genreIds, ...movieUpdateData } = updateData;
 
-      if (!movie) {
-        throw new Error(MovieErrorMessages.MOVIE_NOT_FOUND);
-      }
-
-      Object.assign(movie, updateData);
-
-      if (updateData.genreIds && updateData.genreIds.length > 0) {
-        const genres = await manager.find("Genre", {
-          where: { genreId: In(updateData.genreIds) },
+        const movie = await manager.findOne("Movie", {
+          select: [
+            "movieId",
+            "title",
+            "ageLimit",
+            "durationMin",
+            "releaseYear",
+            "description",
+          ],
+          where: { movieId, deletedAt: null },
+          lock: { mode: "pessimistic_write" },
         });
 
-        if (genres.length !== updateData.genreIds.length) {
-          throw new Error("Some genres not found");
+        if (!movie) {
+          throw new Error(MovieErrorMessages.MOVIE_NOT_FOUND);
         }
 
-        movie.genres = genres;
-      }
+        Object.assign(movie, movieUpdateData);
 
-      try {
-        await manager.save("Movie", movie);
-        return movie;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+        if (genreIds && genreIds.length > 0) {
+          const genres = await manager.find("Genre", {
+            where: { genreId: In(genreIds), deletedAt: null },
+          });
+
+          if (genres.length !== genreIds.length) {
+            throw new Error(GenreErrorMessages.SOME_GENRES_NOT_FOUND);
+          }
+
+          movie.genres = genres;
         }
-        throw error;
-      }
-    });
+
+        return await manager.save("Movie", movie);
+      });
+    } catch (error) {
+      handleDatabaseError(error, MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+    }
   }
 
   async deleteMovie(movieId) {
     return this.#dataSource.transaction(async (manager) => {
-      const movie = await manager
-        .getRepository("Movie")
-        .createQueryBuilder("movie")
-        .leftJoinAndSelect(
-          "movie.showtimes",
-          "showtime",
-          "showtime.deletedAt IS NULL"
-        )
-        .where("movie.movieId = :movieId", { movieId })
-        .andWhere("movie.deletedAt IS NULL")
-        .getOne();
+      const movie = await manager.findOne("Movie", {
+        where: { movieId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
+      });
 
       if (!movie) throw new Error(MovieErrorMessages.MOVIE_NOT_FOUND);
 
-      if (movie.showtimes.length > 0) {
+      const showtimesCount = await manager.count("Showtime", {
+        where: { movieId, deletedAt: null },
+      });
+
+      if (showtimesCount > 0) {
         throw new Error(MovieErrorMessages.MOVIE_DELETE_ERROR);
       }
 
