@@ -62,6 +62,15 @@ export const BookingSeatEntity = new EntitySchema({
       columns: ["showtimeId", "seatId"],
       where: `"status" = '${BookingSeatStatus.ACTIVE}'`,
     },
+    {
+      name: "idx_booking_seat_tariff_id_active",
+      columns: ["tariffId"],
+      where: `"status" = 'active'`,
+    },
+    {
+      name: "idx_booking_seat_booking_id",
+      columns: ["bookingId"],
+    },
   ],
   relations: {
     showtime: {
