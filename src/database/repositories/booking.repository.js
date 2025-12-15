@@ -97,7 +97,7 @@ export class BookingRepository {
         .getMany();
 
       if (seats.length !== seatIds.length) {
-        throw new Error("Some seats not found");
+        throw new Error(BookingErrorMessages.SOME_SEATS_NOT_FOUND);
       }
 
       const now = new Date();
@@ -118,7 +118,7 @@ export class BookingRepository {
         .getOne();
 
       if (!tariff) {
-        throw new Error("No active tariff found");
+        throw new Error(BookingErrorMessages.NO_ACTIVE_TARIFF);
       }
 
       let totalPrice = 0;
@@ -204,7 +204,7 @@ export class BookingRepository {
           bookingId,
           status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
         },
-        relations: ["seats"],
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!booking) throw new Error(BookingErrorMessages.BOOKING_NOT_FOUND);
@@ -217,7 +217,7 @@ export class BookingRepository {
 
       await manager.update(
         "BookingSeat",
-        { bookingId },
+        { bookingId, status: BookingSeatStatus.ACTIVE },
         { status: BookingSeatStatus.CANCELLED }
       );
 
