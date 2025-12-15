@@ -11,6 +11,16 @@ export const BookingEntity = new EntitySchema({
       type: "int",
       generated: "increment",
     },
+    userId: {
+      name: "user_id",
+      type: "int",
+      nullable: false,
+    },
+    showtimeId: {
+      name: "showtime_id",
+      type: "int",
+      nullable: false,
+    },
     totalPrice: {
       name: "total_price",
       type: "decimal",
@@ -35,6 +45,16 @@ export const BookingEntity = new EntitySchema({
     },
   },
   checks: [{ expression: "total_price >= 0" }],
+  indices: [
+    {
+      name: "idx_booking_user_id",
+      columns: ["userId"],
+    },
+    {
+      name: "idx_booking_showtime_id",
+      columns: ["showtimeId"],
+    },
+  ],
   relations: {
     user: {
       type: "many-to-one",
