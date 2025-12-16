@@ -64,7 +64,7 @@ export class BookingRepository {
       .getManyAndCount();
   }
 
-  async bookSeats(showtimeId, seatIds, userId) {
+  bookSeats(showtimeId, seatIds, userId) {
     return this.#dataSource.transaction(async (manager) => {
       const showtime = await manager
         .getRepository("Showtime")
@@ -159,7 +159,7 @@ export class BookingRepository {
     });
   }
 
-  async getBookingById(bookingId) {
+  getBookingById(bookingId) {
     return this.#repo
       .createQueryBuilder("booking")
       .leftJoinAndSelect("booking.showtime", "showtime")
@@ -192,7 +192,7 @@ export class BookingRepository {
       .getOne();
   }
 
-  async cancelBooking(bookingId) {
+  cancelBooking(bookingId) {
     return this.#dataSource.transaction(async (manager) => {
       const booking = await manager.findOne("Booking", {
         where: {
