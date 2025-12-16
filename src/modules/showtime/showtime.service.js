@@ -1,14 +1,21 @@
 import { showtimeRepository } from "../../database/repositories/showtime.repository.js";
 import { ShowtimeErrorMessages } from "./showtime.errors.js";
 import { bookingService } from "../../modules/booking/booking.service.js";
+import { cinemaHallService } from "../cinema-hall/cinema-hall.service.js";
+import { tariffService } from "../tariff/tariff.service.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class ShowtimeService {
   #showtimeRepository;
   #bookingService;
+  #cinemaHallService;
+  #tariffService;
 
   constructor(showtimeRepository, bookingService) {
     this.#showtimeRepository = showtimeRepository;
     this.#bookingService = bookingService;
+    this.#cinemaHallService = cinemaHallService;
+    this.#tariffService = tariffService;
   }
 
   async getAllShowtimes(page, pageSize) {
@@ -38,23 +45,41 @@ class ShowtimeService {
   }
 
   async getHallPlan(showtimeId) {
-    const hallPlan = await this.#showtimeRepository.getHallPlan(showtimeId);
+    const showtime = await this.#showtimeRepository.getShowtimeDetails(
+      showtimeId
+    );
 
-    if (!hallPlan) {
+    if (!showtime) {
       throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
     }
 
-    return hallPlan;
+    const hallSeats =
+      await this.#cinemaHallService.getCinemaHallSeatsByShowtime(
+        showtimeId,
+        showtime.hall.hallId
+      );
+
+    const seats = hallSeats.map((seat) => ({
+      seatId: seat.seatId,
+      row: seat.rowNumber,
+      number: seat.seatNumber,
+      seatType: seat.seatType,
+      basePrice: seat.basePrice,
+      finalPrice: Number(
+        (seat.basePrice * showtime.tariff.priceMultiplier).toFixed(2)
+      ),
+      isBooked: seat.bookings.length > 0,
+    }));
+
+    return {
+      showtimeId: showtime.showtimeId,
+      hallId: showtime.hall.hallId,
+      seats,
+    };
   }
 
-  async getBookings(showtimeId, page, pageSize) {
-    const [bookings, total] = await this.#bookingService.getBookingsByShowtime(
-      showtimeId,
-      page,
-      pageSize
-    );
-
-    return buildPaginationResponse(bookings, total, page, pageSize);
+  getBookings(showtimeId) {
+    return this.#bookingService.getBookingsByShowtime(showtimeId);
   }
 
   bookSeats(showtimeId, seatIds, userId) {
@@ -73,10 +98,21 @@ class ShowtimeService {
     return showtimeDetails;
   }
 
-  createShowtime(showtimeData) {
+  async createShowtime(showtimeData) {
     this.#validateShowtimeNotInPast(showtimeData);
 
-    return this.#showtimeRepository.createShowtime(showtimeData);
+    const tariff = await this.#tariffService.getTariffByShowTime(
+      showtimeData.showTime
+    );
+
+    try {
+      return await this.#showtimeRepository.createShowtime(
+        showtimeData,
+        tariff.tariffId
+      );
+    } catch (error) {
+      handleDatabaseError(error, ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS);
+    }
   }
 
   async updateShowtime(showtimeId, updateData) {
@@ -93,7 +129,14 @@ class ShowtimeService {
 
     this.#validateShowtimeNotInPast({ showDate, showTime });
 
-    return this.#showtimeRepository.updateShowtime(showtimeId, updateData);
+    try {
+      return await this.#showtimeRepository.updateShowtime(
+        showtimeId,
+        updateData
+      );
+    } catch (error) {
+      handleDatabaseError(error, ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS);
+    }
   }
 
   #validateShowtimeNotInPast({ showDate, showTime }) {
@@ -107,12 +150,14 @@ class ShowtimeService {
     }
   }
 
-  async deleteShowtime(showtimeId) {
+  deleteShowtime(showtimeId) {
     return this.#showtimeRepository.deleteShowtime(showtimeId);
   }
 }
 
 export const showtimeService = new ShowtimeService(
   showtimeRepository,
-  bookingService
+  bookingService,
+  cinemaHallService,
+  tariffService
 );
