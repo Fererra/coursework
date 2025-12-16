@@ -13,11 +13,13 @@ class ShowtimeRepository {
     this.#dataSource = dataSource;
   }
 
-  async getAllShowtimes() {
-    const showtimes = await this.#repo
+  getAllShowtimes() {
+    return this.#repo
       .createQueryBuilder("showtime")
       .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
       .where("showtime.deletedAt IS NULL")
+      .andWhere("showtime.showDate >= CURRENT_DATE")
+      .andWhere("showtime.showDate < CURRENT_DATE + INTERVAL '7 days'")
       .select([
         "showtime.showtimeId",
         "showtime.showDate",
@@ -26,25 +28,6 @@ class ShowtimeRepository {
         "movie.title",
       ])
       .getMany();
-
-    const result = showtimes.reduce((acc, showtime) => {
-      const movieId = showtime.movie.movieId;
-      if (!acc[movieId]) {
-        acc[movieId] = {
-          movieId,
-          title: showtime.movie.title,
-          showtimes: [],
-        };
-      }
-      acc[movieId].showtimes.push({
-        showtimeId: showtime.showtimeId,
-        showDate: showtime.showDate,
-        showTime: showtime.showTime,
-      });
-      return acc;
-    }, {});
-
-    return Object.values(result);
   }
 
   async getHallPlan(showtimeId) {

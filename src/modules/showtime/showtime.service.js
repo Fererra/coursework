@@ -11,8 +11,30 @@ class ShowtimeService {
     this.#bookingService = bookingService;
   }
 
-  getAllShowtimes() {
-    return this.#showtimeRepository.getAllShowtimes();
+  async getAllShowtimes(page, pageSize) {
+    const showtimes = await this.#showtimeRepository.getAllShowtimes(
+      page,
+      pageSize
+    );
+
+    const result = showtimes.reduce((acc, showtime) => {
+      const movieId = showtime.movie.movieId;
+      if (!acc[movieId]) {
+        acc[movieId] = {
+          movieId,
+          title: showtime.movie.title,
+          showtimes: [],
+        };
+      }
+      acc[movieId].showtimes.push({
+        showtimeId: showtime.showtimeId,
+        showDate: showtime.showDate,
+        showTime: showtime.showTime,
+      });
+      return acc;
+    }, {});
+
+    return Object.values(result);
   }
 
   async getHallPlan(showtimeId) {
