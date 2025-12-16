@@ -124,6 +124,7 @@ const handleError = (res, error) => {
   const statusMap = {
     [ShowtimeErrorMessages.SHOWTIME_NOT_FOUND]: 404,
     [ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS]: 409,
+    [ShowtimeErrorMessages.SHOWTIME_UPDATE_ERROR]: 400,
     [ShowtimeErrorMessages.SHOWTIME_DELETE_ERROR]: 400,
   };
 

@@ -78,7 +78,6 @@ class ShowtimeRepository {
       row: seat.rowNumber,
       number: seat.seatNumber,
       seatType: seat.seatType,
-      basePrice: seat.basePrice,
       finalPrice: Number(
         (seat.basePrice * showtime.tariff.priceMultiplier).toFixed(2)
       ),
