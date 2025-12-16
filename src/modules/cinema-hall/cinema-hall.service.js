@@ -1,5 +1,6 @@
 import { cinemaHallRepository } from "../../database/repositories/cinema-hall.repository.js";
 import { CinemaHallErrorMessages } from "./cinema-hall.errors.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class CinemaHallService {
   #cinemaHallRepository;
@@ -23,15 +24,36 @@ class CinemaHallService {
     return cinemaHallDetails;
   }
 
-  createCinemaHall(data) {
-    return this.#cinemaHallRepository.createCinemaHall(data);
+  getCinemaHallSeatsByShowtime(showtimeId, hallId) {
+    return this.#cinemaHallRepository.getCinemaHallSeatsByShowtime(
+      showtimeId,
+      hallId
+    );
   }
 
-  updateCinemaHall(cinemaHallId, updateData) {
-    return this.#cinemaHallRepository.updateCinemaHall(
-      cinemaHallId,
-      updateData
-    );
+  async createCinemaHall(data) {
+    try {
+      return await this.#cinemaHallRepository.createCinemaHall(data);
+    } catch (error) {
+      handleDatabaseError(
+        error,
+        CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS
+      );
+    }
+  }
+
+  async updateCinemaHall(cinemaHallId, updateData) {
+    try {
+      return await this.#cinemaHallRepository.updateCinemaHall(
+        cinemaHallId,
+        updateData
+      );
+    } catch (error) {
+      handleDatabaseError(
+        error,
+        CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS
+      );
+    }
   }
 
   deleteCinemaHall(cinemaHallId) {
