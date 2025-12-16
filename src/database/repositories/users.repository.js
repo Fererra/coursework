@@ -1,7 +1,6 @@
 import { UserRole } from "../../modules/users/user-role.js";
 import AppDataSource from "../data-source.js";
 import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
-import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class UsersRepository {
   #repo;
@@ -19,12 +18,8 @@ class UsersRepository {
     });
   }
 
-  async createUser(data) {
-    try {
-      return await this.#repo.save(data);
-    } catch (error) {
-      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
-    }
+  createUser(data) {
+    return this.#repo.save(data);
   }
 
   getUserById(userId) {
@@ -34,29 +29,25 @@ class UsersRepository {
     });
   }
 
-  async updateUserData(userId, updateData) {
-    try {
-      return this.#dataSource.transaction(async (manager) => {
-        const user = await manager.findOne("User", {
-          select: ["userId", "firstName", "lastName", "email"],
-          where: { userId, deletedAt: null },
-          lock: { mode: "pessimistic_write" },
-        });
-
-        if (!user) {
-          throw new Error(AuthErrorMessages.USER_NOT_FOUND);
-        }
-
-        Object.assign(user, updateData);
-
-        return await manager.save("User", user);
+  updateUserData(userId, updateData) {
+    return this.#dataSource.transaction(async (manager) => {
+      const user = await manager.findOne("User", {
+        select: ["userId", "firstName", "lastName", "email"],
+        where: { userId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
-    } catch (error) {
-      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
-    }
+
+      if (!user) {
+        throw new Error(AuthErrorMessages.USER_NOT_FOUND);
+      }
+
+      Object.assign(user, updateData);
+
+      return manager.save("User", user);
+    });
   }
 
-  async deleteUser(userId) {
+  deleteUser(userId) {
     return this.#dataSource.transaction(async (manager) => {
       const user = await manager.findOne("User", {
         where: { userId, deletedAt: null },
