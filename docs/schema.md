@@ -153,6 +153,7 @@
 | movie_id | INT | NOT NULL | Ідентифікатор фільму |
 | show_date | DATE | NOT NULL | Дата сеансу |
 | show_time | TIME | NOT NULL | Час сеансу |
+| tarrif_id | INT | NOT NULL | Ідентифікатор тарифу |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
 | updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
@@ -170,6 +171,7 @@
 
 - Багато-до-одного з `movie` (сеанс належить одному фільму)
 - Багато-до-одного з `cinema_hall` (сеанс проходить в одному залі)
+- Багато-до-одного з `tariff` (сеанс має лише один тариф)
 - Один-до-багатьох з `booking` (сеанс може мати кілька бронювань)
 - Один-до-багатьох з `booking_seat` (сеанс може включати кілька заброньованих місць).
 
