@@ -2,6 +2,7 @@ import { ShowtimeErrorMessages } from "../../modules/showtime/showtime.errors.js
 import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 import AppDataSource from "../data-source.js";
 import { handleDatabaseError } from "../../common/utils/db-errors.js";
+import { LessThanOrEqual, MoreThan } from "typeorm";
 
 class ShowtimeRepository {
   #repo;
@@ -12,8 +13,8 @@ class ShowtimeRepository {
     this.#dataSource = dataSource;
   }
 
-  getAllShowtimes() {
-    return this.#repo
+  async getAllShowtimes() {
+    const showtimes = await this.#repo
       .createQueryBuilder("showtime")
       .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
       .where("showtime.deletedAt IS NULL")
@@ -25,12 +26,31 @@ class ShowtimeRepository {
         "movie.title",
       ])
       .getMany();
+
+    const result = showtimes.reduce((acc, showtime) => {
+      const movieId = showtime.movie.movieId;
+      if (!acc[movieId]) {
+        acc[movieId] = {
+          movieId,
+          title: showtime.movie.title,
+          showtimes: [],
+        };
+      }
+      acc[movieId].showtimes.push({
+        showtimeId: showtime.showtimeId,
+        showDate: showtime.showDate,
+        showTime: showtime.showTime,
+      });
+      return acc;
+    }, {});
+
+    return Object.values(result);
   }
 
   async getHallPlan(showtimeId) {
     const showtime = await this.#dataSource.getRepository("Showtime").findOne({
-      select: ["showtimeId", "hallId"],
       where: { showtimeId, deletedAt: null },
+      relations: ["tariff"],
     });
 
     if (!showtime) {
@@ -38,7 +58,6 @@ class ShowtimeRepository {
     }
 
     const hallSeats = await this.#dataSource.getRepository("Seat").find({
-      select: ["seatId", "rowNumber", "seatNumber", "seatType", "basePrice"],
       where: { hallId: showtime.hallId, deletedAt: null },
     });
 
@@ -46,8 +65,13 @@ class ShowtimeRepository {
       .getRepository("BookingSeat")
       .find({
         select: ["seatId"],
-        where: { showtimeId, status: BookingSeatStatus.ACTIVE },
+        where: {
+          showtimeId,
+          status: BookingSeatStatus.ACTIVE,
+        },
       });
+
+    const bookedSeatIds = new Set(bookedSeats.map((bs) => bs.seatId));
 
     const seats = hallSeats.map((seat) => ({
       seatId: seat.seatId,
@@ -55,7 +79,10 @@ class ShowtimeRepository {
       number: seat.seatNumber,
       seatType: seat.seatType,
       basePrice: seat.basePrice,
-      isBooked: bookedSeats.some((bs) => bs.seatId === seat.seatId),
+      finalPrice: Number(
+        (seat.basePrice * showtime.tariff.priceMultiplier).toFixed(2)
+      ),
+      isBooked: bookedSeatIds.has(seat.seatId),
     }));
 
     return {
@@ -70,6 +97,11 @@ class ShowtimeRepository {
       .createQueryBuilder("showtime")
       .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
       .leftJoinAndSelect("showtime.hall", "hall", "hall.deletedAt IS NULL")
+      .leftJoinAndSelect(
+        "showtime.tariff",
+        "tariff",
+        "tariff.deletedAt IS NULL"
+      )
       .where("showtime.showtimeId = :showtimeId", { showtimeId })
       .andWhere("showtime.deletedAt IS NULL")
       .select([
@@ -80,13 +112,31 @@ class ShowtimeRepository {
         "movie.title",
         "hall.hallId",
         "hall.hallNumber",
+        "tariff.tariffId",
+        "tariff.name",
+        "tariff.priceMultiplier",
       ])
       .getOne();
   }
 
   async createShowtime(data) {
     try {
-      return await this.#repo.save(data);
+      const tariff = await this.#dataSource.getRepository("Tariff").findOne({
+        where: {
+          startTime: LessThanOrEqual(data.showTime),
+          endTime: MoreThan(data.showTime),
+          deletedAt: null,
+        },
+      });
+
+      if (!tariff) {
+        throw new Error("No tariff for this showtime");
+      }
+
+      return await this.#repo.save({
+        ...data,
+        tariffId: tariff.tariffId,
+      });
     } catch (error) {
       handleDatabaseError(error, ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS);
     }
@@ -95,9 +145,18 @@ class ShowtimeRepository {
   async updateShowtime(showtimeId, updateData) {
     try {
       return await this.#dataSource.transaction(async (manager) => {
+        const { showTime, ...rest } = updateData;
+
         const showtime = await manager.findOne("Showtime", {
-          select: ["showtimeId", "hallId", "movieId", "showDate", "showTime"],
           where: { showtimeId, deletedAt: null },
+          select: [
+            "showtimeId",
+            "hallId",
+            "movieId",
+            "showDate",
+            "showTime",
+            "tariffId",
+          ],
           lock: { mode: "pessimistic_write" },
         });
 
@@ -105,7 +164,34 @@ class ShowtimeRepository {
           throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
         }
 
-        Object.assign(showtime, updateData);
+        const oldShowTime = showtime.showTime;
+
+        if (showTime && showTime !== oldShowTime) {
+          const bookingCount = await manager.count("BookingSeat", {
+            where: { showtimeId, status: BookingSeatStatus.ACTIVE },
+          });
+
+          if (bookingCount > 0) {
+            throw new Error(ShowtimeErrorMessages.SHOWTIME_UPDATE_ERROR);
+          }
+
+          const newTariff = await manager.findOne("Tariff", {
+            where: {
+              startTime: LessThanOrEqual(showTime),
+              endTime: MoreThan(showTime),
+              deletedAt: null,
+            },
+          });
+
+          if (!newTariff) {
+            throw new Error("No tariff found for the updated showtime");
+          }
+
+          showtime.showTime = showTime;
+          showtime.tariffId = newTariff.tariffId;
+        }
+
+        Object.assign(showtime, rest);
 
         return await manager.save("Showtime", showtime);
       });

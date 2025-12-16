@@ -46,11 +46,37 @@ class ShowtimeService {
   }
 
   createShowtime(showtimeData) {
+    this.#validateShowtimeNotInPast(showtimeData);
+
     return this.#showtimeRepository.createShowtime(showtimeData);
   }
 
-  updateShowtime(showtimeId, updateData) {
+  async updateShowtime(showtimeId, updateData) {
+    const existing = await this.#showtimeRepository.getShowtimeDetails(
+      showtimeId
+    );
+
+    if (!existing) {
+      throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
+    }
+
+    const showDate = updateData.showDate ?? existing.showDate;
+    const showTime = updateData.showTime ?? existing.showTime;
+
+    this.#validateShowtimeNotInPast({ showDate, showTime });
+
     return this.#showtimeRepository.updateShowtime(showtimeId, updateData);
+  }
+
+  #validateShowtimeNotInPast({ showDate, showTime }) {
+    if (!showDate || !showTime) return;
+
+    const showDateTime = new Date(`${showDate}T${showTime}`);
+    const now = new Date();
+
+    if (showDateTime < now) {
+      throw new Error(ShowtimeErrorMessages.SHOWTIME_IN_PAST);
+    }
   }
 
   async deleteShowtime(showtimeId) {
