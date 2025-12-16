@@ -47,12 +47,14 @@ class ShowtimeService {
     return hallPlan;
   }
 
-  getBookings(showtimeId, page, pageSize) {
-    return this.#bookingService.getBookingsByShowtime(
+  async getBookings(showtimeId, page, pageSize) {
+    const [bookings, total] = await this.#bookingService.getBookingsByShowtime(
       showtimeId,
       page,
       pageSize
     );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
   }
 
   bookSeats(showtimeId, seatIds, userId) {
