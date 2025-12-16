@@ -13,7 +13,7 @@ export class BookingRepository {
     this.#dataSource = dataSource;
   }
 
-  getBookingsByUserId(userId) {
+  getBookingsByUserId(userId, page, pageSize) {
     return this.#repo
       .createQueryBuilder("booking")
       .leftJoinAndSelect("booking.showtime", "showtime")
@@ -36,7 +36,10 @@ export class BookingRepository {
         "seat.rowNumber",
         "seat.seatNumber",
       ])
-      .getMany();
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
   }
 
   getBookingsByShowtime(showtimeId) {

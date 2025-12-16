@@ -1,6 +1,7 @@
 import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
 import { usersRepository } from "../../database/repositories/users.repository.js";
 import { bookingService } from "../../modules/booking/booking.service.js";
+import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
 
 class UsersService {
   #usersRepository;
@@ -35,8 +36,14 @@ class UsersService {
     return data;
   }
 
-  getUserBookings(userId) {
-    return this.#bookingService.getUserBookings(userId);
+  async getUserBookings(userId, page, pageSize) {
+    const [bookings, total] = await this.#bookingService.getUserBookings(
+      userId,
+      page,
+      pageSize
+    );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
   }
 
   async updateUserData(userId, updateData) {

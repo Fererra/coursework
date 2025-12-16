@@ -7,8 +7,8 @@ export class BookingService {
     this.#bookingRepository = bookingRepository;
   }
 
-  getUserBookings(userId) {
-    return this.#bookingRepository.getBookingsByUserId(userId);
+  getUserBookings(userId, page, pageSize) {
+    return this.#bookingRepository.getBookingsByUserId(userId, page, pageSize);
   }
 
   getBookingsByShowtime(showtimeId) {
