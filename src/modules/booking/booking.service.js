@@ -1,4 +1,5 @@
 import { bookingRepository } from "../../database/repositories/booking.repository.js";
+import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
 
 export class BookingService {
   #bookingRepository;
@@ -7,8 +8,25 @@ export class BookingService {
     this.#bookingRepository = bookingRepository;
   }
 
-  getUserBookings(userId, page, pageSize) {
-    return this.#bookingRepository.getBookingsByUserId(userId, page, pageSize);
+  async getUserBookings(userId, page, pageSize) {
+    const [bookings, total] = await this.#bookingRepository.getBookingsByUserId(
+      userId,
+      page,
+      pageSize
+    );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
+  }
+
+  async getBookingsByShowtime(showtimeId, page, pageSize) {
+    const [bookings, total] =
+      await this.#bookingRepository.getBookingsByShowtime(
+        showtimeId,
+        page,
+        pageSize
+      );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
   }
 
   getBookingsByShowtime(showtimeId) {

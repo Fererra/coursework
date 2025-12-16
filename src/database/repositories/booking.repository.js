@@ -42,10 +42,9 @@ export class BookingRepository {
       .getManyAndCount();
   }
 
-  getBookingsByShowtime(showtimeId) {
+  getBookingsByShowtime(showtimeId, page, pageSize) {
     return this.#repo
       .createQueryBuilder("booking")
-      .withDeleted()
       .leftJoinAndSelect("booking.seats", "bookingSeat")
       .leftJoinAndSelect("bookingSeat.seat", "seat")
       .where("booking.showtime = :showtimeId", { showtimeId })
@@ -59,7 +58,10 @@ export class BookingRepository {
         "seat.rowNumber",
         "seat.seatNumber",
       ])
-      .getMany();
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
   }
 
   async bookSeats(showtimeId, seatIds, userId) {
