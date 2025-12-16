@@ -1,3 +1,4 @@
+import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
 import { movieRepository } from "./../../database/repositories/movie.repository.js";
 import { MovieErrorMessages } from "./movie.errors.js";
 
@@ -8,8 +9,13 @@ class MovieService {
     this.#movieRepository = movieRepository;
   }
 
-  getAllMovies() {
-    return this.#movieRepository.getAllMovies();
+  async getAllMovies(page, pageSize) {
+    const [movies, total] = await this.#movieRepository.getAllMovies(
+      page,
+      pageSize
+    );
+
+    return buildPaginationResponse(movies, total, page, pageSize);
   }
 
   async getMovieDetails(movieId) {

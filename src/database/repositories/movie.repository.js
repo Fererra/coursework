@@ -13,11 +13,21 @@ class MovieRepository {
     this.#dataSource = dataSource;
   }
 
-  getAllMovies() {
-    return this.#repo.find({
-      select: ["movieId", "title", "ageLimit", "durationMin", "releaseYear"],
-      where: { deletedAt: null },
-    });
+  async getAllMovies(page, pageSize) {
+    return this.#repo
+      .createQueryBuilder("movie")
+      .select([
+        "movie.movieId",
+        "movie.title",
+        "movie.ageLimit",
+        "movie.durationMin",
+        "movie.releaseYear",
+      ])
+      .where("movie.deletedAt IS NULL")
+      .orderBy("movie.title", "ASC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
   }
 
   getMovieDetails(movieId) {
