@@ -30,6 +30,11 @@ export const ShowtimeEntity = new EntitySchema({
       type: "time",
       nullable: false,
     },
+    tariffId: {
+      name: "tariff_id",
+      type: "int",
+      nullable: false,
+    },
     createdAt: {
       name: "created_at",
       type: "timestamp",
@@ -70,6 +75,11 @@ export const ShowtimeEntity = new EntitySchema({
       type: "many-to-one",
       target: "CinemaHall",
       joinColumn: { name: "hall_id" },
+    },
+    tariff: {
+      type: "many-to-one",
+      target: "Tariff",
+      joinColumn: { name: "tariff_id" },
     },
     bookings: {
       type: "one-to-many",

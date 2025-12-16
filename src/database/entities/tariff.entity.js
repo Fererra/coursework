@@ -60,5 +60,10 @@ export const TariffEntity = new EntitySchema({
       target: "BookingSeat",
       inverseSide: "tariff",
     },
+    showtimes: {
+      type: "one-to-many",
+      target: "Showtime",
+      inverseSide: "tariff",
+    },
   },
 });
