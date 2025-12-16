@@ -25,8 +25,12 @@ class ShowtimeService {
     return hallPlan;
   }
 
-  getBookings(showtimeId) {
-    return this.#bookingService.getBookingsByShowtime(showtimeId);
+  getBookings(showtimeId, page, pageSize) {
+    return this.#bookingService.getBookingsByShowtime(
+      showtimeId,
+      page,
+      pageSize
+    );
   }
 
   bookSeats(showtimeId, seatIds, userId) {

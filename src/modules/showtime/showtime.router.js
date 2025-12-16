@@ -5,6 +5,7 @@ import { createShowtimeDto } from "./dto/create-showtime.dto.js";
 import { updateShowtimeDto } from "./dto/update-showtime.dto.js";
 import { bookSeatsDto } from "./dto/book-seats.dto.js";
 import { idSchema } from "../../common/validation/id.schema.js";
+import { paginationSchema } from "../../common/validation/pagination.schema.js";
 
 const showtimeRouter = Router();
 
@@ -36,7 +37,13 @@ showtimeRouter.get("/:id/bookings", async (req, res) => {
       req.params.id
     );
 
-    const bookings = await showtimeService.getBookings(showtimeId);
+    const { page, pageSize } = await paginationSchema.validateAsync(req.query);
+
+    const bookings = await showtimeService.getBookings(
+      showtimeId,
+      page,
+      pageSize
+    );
     res.json(bookings);
   } catch (error) {
     handleError(res, error);
