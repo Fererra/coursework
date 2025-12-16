@@ -1,7 +1,7 @@
 import AppDataSource from "../data-source.js";
 import { TariffErrorMessages } from "../../modules/tariff/tariff.errors.js";
-import { handleDatabaseError } from "../../common/utils/db-errors.js";
 import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
+import { LessThanOrEqual, MoreThan } from "typeorm";
 
 class TariffRepository {
   #repo;
@@ -20,37 +20,40 @@ class TariffRepository {
     });
   }
 
-  async createTariff(data) {
-    try {
-      return await this.#repo.save(data);
-    } catch (error) {
-      handleDatabaseError(error, TariffErrorMessages.TARIFF_ALREADY_EXISTS);
-    }
+  getTariffByShowTime(showTime) {
+    return this.#repo.findOne({
+      where: {
+        startTime: LessThanOrEqual(showTime),
+        endTime: MoreThan(showTime),
+        deletedAt: null,
+      },
+      select: ["tariffId", "name", "startTime", "endTime", "priceMultiplier"],
+    });
   }
 
-  async updateTariff(tariffId, updateData) {
-    try {
-      return await this.#dataSource.transaction(async (manager) => {
-        const tariff = await manager.findOne("Tariff", {
-          select: ["tariffId", "name"],
-          where: { tariffId, deletedAt: null },
-          lock: { mode: "pessimistic_write" },
-        });
+  createTariff(data) {
+    return this.#repo.save(data);
+  }
 
-        if (!tariff) {
-          throw new Error(TariffErrorMessages.TARIFF_NOT_FOUND);
-        }
-
-        Object.assign(tariff, updateData);
-
-        return await manager.save("Tariff", tariff);
+  updateTariff(tariffId, updateData) {
+    return this.#dataSource.transaction(async (manager) => {
+      const tariff = await manager.findOne("Tariff", {
+        select: ["tariffId", "name"],
+        where: { tariffId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
-    } catch (error) {
-      handleDatabaseError(error, TariffErrorMessages.TARIFF_ALREADY_EXISTS);
-    }
+
+      if (!tariff) {
+        throw new Error(TariffErrorMessages.TARIFF_NOT_FOUND);
+      }
+
+      Object.assign(tariff, updateData);
+
+      return manager.save("Tariff", tariff);
+    });
   }
 
-  async deleteTariff(tariffId) {
+  deleteTariff(tariffId) {
     return this.#dataSource.transaction(async (manager) => {
       const tariff = await manager.findOne("Tariff", {
         where: { tariffId, deletedAt: null },
