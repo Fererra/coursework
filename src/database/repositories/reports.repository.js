@@ -32,7 +32,7 @@ class ReportsRepository {
       .getRawMany();
   }
 
-  async getMoviesAttendanceReport() {
+  getMoviesAttendanceReport() {
     const sql = `
       WITH showtime_stats AS (
         SELECT
