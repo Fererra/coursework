@@ -4,12 +4,15 @@ import { createMovieDto } from "./dto/create-movie.dto.js";
 import { updateMovieDto } from "./dto/update-movie.dto.js";
 import { movieService } from "./movie.service.js";
 import { MovieErrorMessages } from "./movie.errors.js";
+import { paginationSchema } from "../../common/validation/pagination.schema.js";
 
 const movieRouter = Router();
 
-movieRouter.get("/", async (_req, res) => {
+movieRouter.get("/", async (req, res) => {
   try {
-    const movies = await movieService.getAllMovies();
+    const { page, pageSize } = await paginationSchema.validateAsync(req.query);
+
+    const movies = await movieService.getAllMovies(page, pageSize);
     return res.json(movies);
   } catch (error) {
     handleError(res, error);
@@ -69,6 +72,7 @@ const handleError = (res, error) => {
   const statusMap = {
     [MovieErrorMessages.MOVIE_NOT_FOUND]: 404,
     [MovieErrorMessages.MOVIE_ALREADY_EXISTS]: 409,
+    [MovieErrorMessages.MOVIE_DELETE_ERROR]: 400,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });

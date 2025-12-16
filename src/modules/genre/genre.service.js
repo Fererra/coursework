@@ -1,4 +1,5 @@
 import { genreRepository } from "../../database/repositories/genre.repository.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class GenreService {
   #genreRepository;
@@ -11,12 +12,20 @@ class GenreService {
     return this.#genreRepository.getAllGenres();
   }
 
-  createGenre(data) {
-    return this.#genreRepository.createGenre(data);
+  async createGenre(data) {
+    try {
+      return await this.#genreRepository.createGenre(data);
+    } catch (error) {
+      handleDatabaseError(error, GenreErrorMessages.GENRE_ALREADY_EXISTS);
+    }
   }
 
-  updateGenre(genreId, updateData) {
-    return this.#genreRepository.updateGenre(genreId, updateData);
+  async updateGenre(genreId, updateData) {
+    try {
+      return await this.#genreRepository.updateGenre(genreId, updateData);
+    } catch (error) {
+      handleDatabaseError(error, GenreErrorMessages.GENRE_ALREADY_EXISTS);
+    }
   }
 
   deleteGenre(genreId) {

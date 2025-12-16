@@ -15,18 +15,11 @@ class UsersRepository {
     return this.#repo.findOne({
       select: ["userId", "email", "password"],
       where: { email },
-      withDeleted: true,
     });
   }
 
   createUser(data) {
-    try {
-      return this.#repo.save(data);
-    } catch (error) {
-      if (error.code === "23505") {
-        throw new Error(AuthErrorMessages.USER_ALREADY_EXISTS);
-      }
-    }
+    return this.#repo.save(data);
   }
 
   getUserById(userId) {
@@ -36,11 +29,12 @@ class UsersRepository {
     });
   }
 
-  async updateUserData(userId, updateData) {
+  updateUserData(userId, updateData) {
     return this.#dataSource.transaction(async (manager) => {
       const user = await manager.findOne("User", {
         select: ["userId", "firstName", "lastName", "email"],
         where: { userId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!user) {
@@ -49,29 +43,29 @@ class UsersRepository {
 
       Object.assign(user, updateData);
 
-      try {
-        return await manager.save("User", user);
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(AuthErrorMessages.USER_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+      return manager.save("User", user);
     });
   }
 
-  async deleteUser(userId) {
+  deleteUser(userId) {
     return this.#dataSource.transaction(async (manager) => {
       const user = await manager.findOne("User", {
         where: { userId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
+
+      const bookingsCount = await manager.count("Booking", {
+        where: { user: { userId } },
+      });
+      if (bookingsCount > 0)
+        throw new Error(AuthErrorMessages.USER_HAS_BOOKINGS);
 
       if (!user) {
         throw new Error(AuthErrorMessages.USER_NOT_FOUND);
       }
 
       if (user.role === UserRole.ADMIN) {
-        throw new Error("Cannot delete admin accounts");
+        throw new Error(AuthErrorMessages.ADMIN_DELETION_ERROR);
       }
 
       await manager.softDelete("User", { userId });

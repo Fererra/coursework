@@ -1,5 +1,7 @@
 import AppDataSource from "../data-source.js";
 import { TariffErrorMessages } from "../../modules/tariff/tariff.errors.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
+import { LessThanOrEqual, MoreThan } from "typeorm";
 
 class TariffRepository {
   #repo;
@@ -14,29 +16,31 @@ class TariffRepository {
     return this.#repo.find({
       select: ["tariffId", "name", "startTime", "endTime", "priceMultiplier"],
       where: { deletedAt: null },
+      order: { startTime: "ASC" },
     });
   }
 
-  async createTariff(data) {
-    return this.#dataSource.transaction(async (manager) => {
-      try {
-        const tariff = manager.create("Tariff", data);
-        await manager.save("Tariff", tariff);
-        return tariff;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(TariffErrorMessages.TARIFF_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+  getTariffByShowTime(showTime) {
+    return this.#repo.findOne({
+      where: {
+        startTime: LessThanOrEqual(showTime),
+        endTime: MoreThan(showTime),
+        deletedAt: null,
+      },
+      select: ["tariffId", "name", "startTime", "endTime", "priceMultiplier"],
     });
   }
 
-  async updateTariff(tariffId, updateData) {
+  createTariff(data) {
+    return this.#repo.save(data);
+  }
+
+  updateTariff(tariffId, updateData) {
     return this.#dataSource.transaction(async (manager) => {
       const tariff = await manager.findOne("Tariff", {
         select: ["tariffId", "name"],
         where: { tariffId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!tariff) {
@@ -45,25 +49,26 @@ class TariffRepository {
 
       Object.assign(tariff, updateData);
 
-      try {
-        await manager.save("Tariff", tariff);
-        return tariff;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(TariffErrorMessages.TARIFF_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+      return manager.save("Tariff", tariff);
     });
   }
 
-  async deleteTariff(tariffId) {
+  deleteTariff(tariffId) {
     return this.#dataSource.transaction(async (manager) => {
       const tariff = await manager.findOne("Tariff", {
         where: { tariffId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!tariff) throw new Error(TariffErrorMessages.TARIFF_NOT_FOUND);
+
+      const bookingCount = await manager.count("BookingSeat", {
+        where: { tariffId, status: BookingSeatStatus.ACTIVE },
+      });
+
+      if (bookingCount > 0) {
+        throw new Error(TariffErrorMessages.TARIFF_HAS_BOOKINGS);
+      }
 
       await manager.softDelete("Tariff", { tariffId });
 

@@ -30,6 +30,11 @@ export const ShowtimeEntity = new EntitySchema({
       type: "time",
       nullable: false,
     },
+    tariffId: {
+      name: "tariff_id",
+      type: "int",
+      nullable: false,
+    },
     createdAt: {
       name: "created_at",
       type: "timestamp",
@@ -48,6 +53,18 @@ export const ShowtimeEntity = new EntitySchema({
     },
   },
   uniques: [{ columns: ["hallId", "showDate", "showTime"] }],
+  indices: [
+    {
+      name: "idx_showtime_movie_id",
+      columns: ["movieId"],
+      where: '"deleted_at" IS NULL',
+    },
+    {
+      name: "idx_showtime_hall_id",
+      columns: ["hallId"],
+      where: '"deleted_at" IS NULL',
+    },
+  ],
   relations: {
     movie: {
       type: "many-to-one",
@@ -58,6 +75,11 @@ export const ShowtimeEntity = new EntitySchema({
       type: "many-to-one",
       target: "CinemaHall",
       joinColumn: { name: "hall_id" },
+    },
+    tariff: {
+      type: "many-to-one",
+      target: "Tariff",
+      joinColumn: { name: "tariff_id" },
     },
     bookings: {
       type: "one-to-many",

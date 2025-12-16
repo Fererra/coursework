@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 
 export const BookingSeatEntity = new EntitySchema({
   name: "BookingSeat",
@@ -61,6 +61,15 @@ export const BookingSeatEntity = new EntitySchema({
       unique: true,
       columns: ["showtimeId", "seatId"],
       where: `"status" = '${BookingSeatStatus.ACTIVE}'`,
+    },
+    {
+      name: "idx_booking_seat_tariff_id_active",
+      columns: ["tariffId"],
+      where: `"status" = 'active'`,
+    },
+    {
+      name: "idx_booking_seat_booking_id",
+      columns: ["bookingId"],
     },
   ],
   relations: {

@@ -1,6 +1,8 @@
-import { AuthErrorMessages } from "../../modules/auth/auth.errors.js";
+import { AuthErrorMessages } from "../auth/auth.errors.js";
 import { usersRepository } from "../../database/repositories/users.repository.js";
-import { bookingService } from "../../modules/booking/booking.service.js";
+import { bookingService } from "../booking/booking.service.js";
+import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 
 class UsersService {
   #usersRepository;
@@ -21,8 +23,12 @@ class UsersService {
     return user;
   }
 
-  createUser(data) {
-    return this.#usersRepository.createUser(data);
+  async createUser(data) {
+    try {
+      return await this.#usersRepository.createUser(data);
+    } catch (error) {
+      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
+    }
   }
 
   async getUserData(userId) {
@@ -35,15 +41,25 @@ class UsersService {
     return data;
   }
 
-  getUserBookings(userId) {
-    return this.#bookingService.getUserBookings(userId);
+  async getUserBookings(userId, page, pageSize) {
+    const [bookings, total] = await this.#bookingService.getUserBookings(
+      userId,
+      page,
+      pageSize
+    );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
   }
 
   async updateUserData(userId, updateData) {
-    return this.#usersRepository.updateUserData(userId, updateData);
+    try {
+      return await this.#usersRepository.updateUserData(userId, updateData);
+    } catch (error) {
+      handleDatabaseError(error, AuthErrorMessages.USER_ALREADY_EXISTS);
+    }
   }
 
-  async deleteUser(userId) {
+  deleteUser(userId) {
     return this.#usersRepository.deleteUser(userId);
   }
 }

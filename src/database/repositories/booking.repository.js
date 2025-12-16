@@ -1,7 +1,7 @@
 import AppDataSource from "../data-source.js";
 import { BookingErrorMessages } from "../../modules/booking/booking.errors.js";
 import { BookingStatus } from "../../modules/booking/booking-status.js";
-import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 import { In } from "typeorm";
 
 export class BookingRepository {
@@ -13,10 +13,9 @@ export class BookingRepository {
     this.#dataSource = dataSource;
   }
 
-  getBookingsByUserId(userId) {
+  getBookingsByUserId(userId, page, pageSize) {
     return this.#repo
       .createQueryBuilder("booking")
-      .withDeleted()
       .leftJoinAndSelect("booking.showtime", "showtime")
       .leftJoinAndSelect("showtime.movie", "movie")
       .leftJoinAndSelect("booking.seats", "bookingSeat")
@@ -37,13 +36,15 @@ export class BookingRepository {
         "seat.rowNumber",
         "seat.seatNumber",
       ])
-      .getMany();
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
   }
 
-  getBookingsByShowtime(showtimeId) {
+  getBookingsByShowtime(showtimeId, page, pageSize) {
     return this.#repo
       .createQueryBuilder("booking")
-      .withDeleted()
       .leftJoinAndSelect("booking.seats", "bookingSeat")
       .leftJoinAndSelect("bookingSeat.seat", "seat")
       .where("booking.showtime = :showtimeId", { showtimeId })
@@ -57,20 +58,33 @@ export class BookingRepository {
         "seat.rowNumber",
         "seat.seatNumber",
       ])
-      .getMany();
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
   }
 
-  async bookSeats(showtimeId, seatIds, userId) {
+  bookSeats(showtimeId, seatIds, userId) {
     return this.#dataSource.transaction(async (manager) => {
       const showtime = await manager
         .getRepository("Showtime")
         .createQueryBuilder("showtime")
-        .select(["showtime.showtimeId"])
+        .leftJoinAndSelect(
+          "showtime.tariff",
+          "tariff",
+          "tariff.deleted_at IS NULL"
+        )
+        .select([
+          "showtime.showtimeId",
+          "showtime.tariffId",
+          "tariff.tariffId",
+          "tariff.priceMultiplier",
+        ])
         .where("showtime.showtime_id = :showtimeId", { showtimeId })
         .andWhere("showtime.deleted_at IS NULL")
         .getOne();
 
-      if (!showtime) {
+      if (!showtime || !showtime.tariff) {
         throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
       }
 
@@ -100,37 +114,18 @@ export class BookingRepository {
         throw new Error("Some seats not found");
       }
 
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      const currentTime = `${hh}:${mm}:${ss}`;
-
-      const tariff = await manager
-        .getRepository("Tariff")
-        .createQueryBuilder("tariff")
-        .select(["tariff.tariffId", "tariff.priceMultiplier"])
-        .where("tariff.deleted_at IS NULL")
-        .andWhere(
-          ":currentTime BETWEEN tariff.start_time AND tariff.end_time",
-          { currentTime }
-        )
-        .getOne();
-
-      if (!tariff) {
-        throw new Error("No active tariff found");
-      }
-
       let totalPrice = 0;
       const bookingSeatsData = seats.map((seat) => {
         const finalPrice =
-          parseFloat(seat.basePrice) * parseFloat(tariff.priceMultiplier || 1);
+          parseFloat(seat.basePrice) *
+          parseFloat(showtime.tariff.priceMultiplier);
+
         totalPrice += finalPrice;
 
         return {
           showtimeId,
           seatId: seat.seatId,
-          tariffId: tariff.tariffId,
+          tariffId: showtime.tariff.tariffId,
           finalPrice,
         };
       });
@@ -164,7 +159,7 @@ export class BookingRepository {
     });
   }
 
-  async getBookingById(bookingId) {
+  getBookingById(bookingId) {
     return this.#repo
       .createQueryBuilder("booking")
       .leftJoinAndSelect("booking.showtime", "showtime")
@@ -197,14 +192,14 @@ export class BookingRepository {
       .getOne();
   }
 
-  async cancelBooking(bookingId) {
+  cancelBooking(bookingId) {
     return this.#dataSource.transaction(async (manager) => {
       const booking = await manager.findOne("Booking", {
         where: {
           bookingId,
           status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
         },
-        relations: ["seats"],
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!booking) throw new Error(BookingErrorMessages.BOOKING_NOT_FOUND);
@@ -217,7 +212,7 @@ export class BookingRepository {
 
       await manager.update(
         "BookingSeat",
-        { bookingId },
+        { bookingId, status: BookingSeatStatus.ACTIVE },
         { status: BookingSeatStatus.CANCELLED }
       );
 

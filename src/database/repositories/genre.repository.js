@@ -17,48 +17,30 @@ class GenreRepository {
     });
   }
 
-  async createGenre(data) {
-    try {
-      const genre = await this.#repo.create(data);
-      await this.#repo.save(genre);
-      return genre;
-    } catch (error) {
-      if (error.code === "23505") {
-        throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
-      }
-      throw error;
-    }
+  createGenre(data) {
+    return this.#repo.save(data);
   }
 
-  async updateGenre(genreId, updateData) {
+  updateGenre(genreId, updateData) {
     return this.#dataSource.transaction(async (manager) => {
       const genre = await manager.findOne("Genre", {
-        select: ["genreId", "name"],
         where: { genreId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
-      if (!genre) {
-        throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);
-      }
+      if (!genre) throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);
 
       Object.assign(genre, updateData);
 
-      try {
-        await manager.save("Genre", genre);
-        return genre;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(GenreErrorMessages.GENRE_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+      return manager.save("Genre", genre);
     });
   }
 
-  async deleteGenre(genreId) {
+  deleteGenre(genreId) {
     return this.#dataSource.transaction(async (manager) => {
       const genre = await manager.findOne("Genre", {
         where: { genreId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!genre) throw new Error(GenreErrorMessages.GENRE_NOT_FOUND);

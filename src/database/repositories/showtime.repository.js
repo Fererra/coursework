@@ -1,6 +1,7 @@
 import { ShowtimeErrorMessages } from "../../modules/showtime/showtime.errors.js";
-import { BookingSeatStatus } from "../../modules/booking/booking-seat.status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
 import AppDataSource from "../data-source.js";
+import { LessThanOrEqual, MoreThan } from "typeorm";
 
 class ShowtimeRepository {
   #repo;
@@ -14,7 +15,10 @@ class ShowtimeRepository {
   getAllShowtimes() {
     return this.#repo
       .createQueryBuilder("showtime")
-      .leftJoinAndSelect("showtime.movie", "movie")
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .where("showtime.deletedAt IS NULL")
+      .andWhere("showtime.showDate >= CURRENT_DATE")
+      .andWhere("showtime.showDate < CURRENT_DATE + INTERVAL '7 days'")
       .select([
         "showtime.showtimeId",
         "showtime.showDate",
@@ -25,113 +29,110 @@ class ShowtimeRepository {
       .getMany();
   }
 
-  async getHallPlan(showtimeId) {
-    const showtime = await this.#dataSource.getRepository("Showtime").findOne({
-      select: ["showtimeId", "hallId"],
-      where: { showtimeId, deletedAt: null },
-    });
-
-    if (!showtime) {
-      throw new Error("Showtime not found");
-    }
-
-    const hallSeats = await this.#dataSource.getRepository("Seat").find({
-      select: ["seatId", "rowNumber", "seatNumber", "seatType", "basePrice"],
-      where: { hallId: showtime.hallId, deletedAt: null },
-    });
-
-    const bookedSeats = await this.#dataSource
-      .getRepository("BookingSeat")
-      .find({
-        select: ["seatId"],
-        where: { showtimeId, status: BookingSeatStatus.ACTIVE },
-      });
-
-    const seats = hallSeats.map((seat) => ({
-      seatId: seat.seatId,
-      row: seat.rowNumber,
-      number: seat.seatNumber,
-      seatType: seat.seatType,
-      basePrice: seat.basePrice,
-      isBooked: bookedSeats.some((bs) => bs.seatId === seat.seatId),
-    }));
-
-    return {
-      showtimeId: showtime.showtimeId,
-      hallId: showtime.hallId,
-      seats,
-    };
-  }
-
   getShowtimeDetails(showtimeId) {
-    return this.#repo.findOne({
-      select: ["showtimeId", "hallId", "movieId", "showDate", "showTime"],
-      where: { showtimeId, deletedAt: null },
-    });
+    return this.#repo
+      .createQueryBuilder("showtime")
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .leftJoinAndSelect("showtime.hall", "hall", "hall.deletedAt IS NULL")
+      .leftJoinAndSelect(
+        "showtime.tariff",
+        "tariff",
+        "tariff.deletedAt IS NULL"
+      )
+      .where("showtime.showtimeId = :showtimeId", { showtimeId })
+      .andWhere("showtime.deletedAt IS NULL")
+      .select([
+        "showtime.showtimeId",
+        "showtime.showDate",
+        "showtime.showTime",
+        "movie.movieId",
+        "movie.title",
+        "hall.hallId",
+        "hall.hallNumber",
+        "tariff.tariffId",
+        "tariff.name",
+        "tariff.priceMultiplier",
+      ])
+      .getOne();
   }
 
-  createShowtime(data) {
-    return this.#dataSource.transaction(async (manager) => {
-      try {
-        const showtime = manager.create("Showtime", data);
-        await manager.save("Showtime", showtime);
-        return showtime;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+  createShowtime(data, tariffId) {
+    return this.#repo.save({
+      ...data,
+      tariffId: tariffId,
     });
   }
 
   updateShowtime(showtimeId, updateData) {
     return this.#dataSource.transaction(async (manager) => {
+      const { showTime, ...rest } = updateData;
+
       const showtime = await manager.findOne("Showtime", {
-        select: ["showtimeId", "hallId", "movieId", "showDate", "showTime"],
         where: { showtimeId, deletedAt: null },
+        select: [
+          "showtimeId",
+          "hallId",
+          "movieId",
+          "showDate",
+          "showTime",
+          "tariffId",
+        ],
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!showtime) {
         throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
       }
 
-      Object.assign(showtime, updateData);
+      const oldShowTime = showtime.showTime;
 
-      try {
-        await manager.save("Showtime", showtime);
-        return showtime;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(ShowtimeErrorMessages.SHOWTIME_ALREADY_EXISTS);
+      if (showTime && showTime !== oldShowTime) {
+        const bookingCount = await manager.count("BookingSeat", {
+          where: { showtimeId, status: BookingSeatStatus.ACTIVE },
+        });
+
+        if (bookingCount > 0) {
+          throw new Error(ShowtimeErrorMessages.SHOWTIME_UPDATE_ERROR);
         }
-        throw error;
+
+        const newTariff = await manager.findOne("Tariff", {
+          where: {
+            startTime: LessThanOrEqual(showTime),
+            endTime: MoreThan(showTime),
+            deletedAt: null,
+          },
+        });
+
+        if (!newTariff) {
+          throw new Error("No tariff found for the updated showtime");
+        }
+
+        showtime.showTime = showTime;
+        showtime.tariffId = newTariff.tariffId;
       }
+
+      Object.assign(showtime, rest);
+
+      return manager.save("Showtime", showtime);
     });
   }
 
-  async deleteShowtime(showtimeId) {
+  deleteShowtime(showtimeId) {
     return this.#dataSource.transaction(async (manager) => {
-      const showtime = await manager
-        .getRepository("Showtime")
-        .createQueryBuilder("showtime")
-        .leftJoinAndSelect(
-          "showtime.bookings",
-          "booking",
-          "booking.status != :deletedStatus",
-          {
-            deletedStatus: BookingSeatStatus.CANCELLED,
-          }
-        )
-        .where("showtime.showtime_id = :showtimeId", { showtimeId })
-        .andWhere("showtime.deleted_at IS NULL")
-        .getOne();
+      const showtime = await manager.findOne("Showtime", {
+        where: { showtimeId, deletedAt: null },
+        lock: { mode: "pessimistic_write" },
+      });
 
       if (!showtime) {
         throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
       }
 
-      if (showtime.bookings && showtime.bookings.length > 0) {
+      const bookingCount = await manager.count("BookingSeat", {
+        where: { showtimeId, status: BookingSeatStatus.ACTIVE },
+      });
+
+      if (bookingCount > 0) {
         throw new Error(ShowtimeErrorMessages.SHOWTIME_DELETE_ERROR);
       }
 

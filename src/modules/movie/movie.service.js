@@ -1,4 +1,6 @@
+import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
 import { movieRepository } from "./../../database/repositories/movie.repository.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
 import { MovieErrorMessages } from "./movie.errors.js";
 
 class MovieService {
@@ -8,8 +10,13 @@ class MovieService {
     this.#movieRepository = movieRepository;
   }
 
-  getAllMovies() {
-    return this.#movieRepository.getAllMovies();
+  async getAllMovies(page, pageSize) {
+    const [movies, total] = await this.#movieRepository.getAllMovies(
+      page,
+      pageSize
+    );
+
+    return buildPaginationResponse(movies, total, page, pageSize);
   }
 
   async getMovieDetails(movieId) {
@@ -22,12 +29,20 @@ class MovieService {
     return movieDetails;
   }
 
-  createMovie(data) {
-    return this.#movieRepository.createMovie(data);
+  async createMovie(data) {
+    try {
+      return await this.#movieRepository.createMovie(data);
+    } catch (error) {
+      handleDatabaseError(error, MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+    }
   }
 
   updateMovie(movieId, updateData) {
-    return this.#movieRepository.updateMovie(movieId, updateData);
+    try {
+      return this.#movieRepository.updateMovie(movieId, updateData);
+    } catch (error) {
+      handleDatabaseError(error, MovieErrorMessages.MOVIE_ALREADY_EXISTS);
+    }
   }
 
   deleteMovie(movieId) {

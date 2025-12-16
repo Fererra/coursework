@@ -3,6 +3,7 @@ import { idSchema } from "../../common/validation/id.schema.js";
 import { usersService } from "./users.service.js";
 import { updateUserDto } from "./dto/update-user.dto.js";
 import { AuthErrorMessages } from "../auth/auth.errors.js";
+import { paginationSchema } from "../../common/validation/pagination.schema.js";
 
 const usersRouter = Router();
 
@@ -20,8 +21,9 @@ usersRouter.get("/:id", async (req, res) => {
 usersRouter.get("/:id/bookings", async (req, res) => {
   try {
     const userId = await idSchema("userId").validateAsync(req.params.id);
+    const { page, pageSize } = await paginationSchema.validateAsync(req.query);
 
-    const bookings = await usersService.getUserBookings(userId);
+    const bookings = await usersService.getUserBookings(userId, page, pageSize);
     return res.json(bookings);
   } catch (error) {
     handleError(res, error);
@@ -56,6 +58,8 @@ usersRouter.delete("/:id", async (req, res) => {
 const handleError = (res, error) => {
   const statusMap = {
     [AuthErrorMessages.USER_NOT_FOUND]: 404,
+    [AuthErrorMessages.ADMIN_DELETION_ERROR]: 403,
+    [AuthErrorMessages.USER_HAS_BOOKINGS]: 403,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });

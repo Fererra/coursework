@@ -18,6 +18,7 @@ const AppDataSource = new DataSource({
   migrations: [__dirname + "/migrations/*.js"],
   synchronize: false,
   logging: true,
+  migrationsRun: true,
 });
 
 export default AppDataSource;

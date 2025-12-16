@@ -1,5 +1,7 @@
 import AppDataSource from "../data-source.js";
 import { CinemaHallErrorMessages } from "../../modules/cinema-hall/cinema-hall.errors.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
+import { In } from "typeorm";
 
 class CinemaHallRepository {
   #repo;
@@ -31,124 +33,147 @@ class CinemaHallRepository {
         "seats.seatType",
         "seats.basePrice",
       ])
-      .where("cinemaHall.hallId = :cinemaHallId", { cinemaHallId: hallId })
+      .where("cinemaHall.hallId = :hallId", { hallId })
       .andWhere("cinemaHall.deletedAt IS NULL")
       .getOne();
   }
 
-  async createCinemaHall(data) {
+  getCinemaHallSeatsByShowtime(showtimeId, hallId) {
+    return this.#dataSource
+      .getRepository("Seat")
+      .createQueryBuilder("seat")
+      .leftJoinAndSelect(
+        "seat.bookings",
+        "bs",
+        "bs.showtimeId = :showtimeId AND bs.status = :status",
+        { showtimeId, status: BookingSeatStatus.ACTIVE }
+      )
+      .where("seat.hallId = :hallId AND seat.deletedAt IS NULL", { hallId })
+      .select([
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+        "seat.seatType",
+        "seat.basePrice",
+        "bs.seatId",
+      ])
+      .getMany();
+  }
+
+  createCinemaHall(data) {
     return this.#dataSource.transaction(async (manager) => {
-      try {
-        const { seats, ...cinemaHallData } = data;
+      const { seats, ...cinemaHallData } = data;
 
-        const cinemaHall = manager.create("CinemaHall", cinemaHallData);
-        await manager.save("CinemaHall", cinemaHall);
+      const cinemaHall = manager.create("CinemaHall", cinemaHallData);
+      await manager.save("CinemaHall", cinemaHall);
 
-        if (seats && seats.length > 0) {
-          const seatEntities = seats.map((seat) =>
-            manager.create("Seat", {
-              ...seat,
-              hallId: cinemaHall.hallId,
-            })
-          );
-
-          cinemaHall.seats = seatEntities;
-
-          await manager.save("Seat", seatEntities);
-        }
-
-        return cinemaHall;
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS);
-        }
-        throw error;
+      if (seats && seats.length > 0) {
+        const seatEntities = seats.map((seat) =>
+          manager.create("Seat", {
+            ...seat,
+            hallId: cinemaHall.hallId,
+          })
+        );
+        cinemaHall.seats = seatEntities;
+        await manager.save("Seat", seatEntities);
       }
+
+      return cinemaHall;
     });
   }
 
-  async updateCinemaHall(hallId, updateData) {
+  updateCinemaHall(hallId, updateData) {
     return this.#dataSource.transaction(async (manager) => {
       const { seats, ...updateHallData } = updateData;
 
       const cinemaHall = await manager.findOne("CinemaHall", {
         where: { hallId, deletedAt: null },
-        relations: ["seats"],
+        lock: { mode: "pessimistic_write" },
       });
 
       if (!cinemaHall)
         throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
 
-      Object.assign(cinemaHall, updateHallData);
+      cinemaHall.seats = await manager.find("Seat", {
+        where: { hallId, deletedAt: null },
+      });
+
+      await manager.save("CinemaHall", {
+        hallId: cinemaHall.hallId,
+        ...updateHallData,
+      });
 
       if (seats) {
+        const seatIdsToDelete = seats
+          .filter((s) => s.seatId && s.deleted)
+          .map((s) => s.seatId);
+
+        if (seatIdsToDelete.length > 0) {
+          await manager.softDelete("Seat", { seatId: In(seatIdsToDelete) });
+        }
+
         for (const seatDto of seats) {
-          console.log(seatDto.seatId);
-          if (seatDto.seatId) {
+          if (seatDto.seatId && seatDto.deleted) {
+            continue;
+          }
+
+          if (seatDto.seatId && !seatDto.deleted) {
             const existingSeat = cinemaHall.seats.find(
               (s) => s.seatId === seatDto.seatId
             );
 
-            if (!existingSeat) throw new Error("Seat not found");
+            if (!existingSeat)
+              throw new Error(CinemaHallErrorMessages.SEAT_NOT_FOUND);
 
-            console.log(seatDto);
-
-            if (seatDto.deleted) {
-              await manager.softDelete("Seat", { seatId: seatDto.seatId });
-            } else {
-              Object.assign(existingSeat, seatDto);
-            }
+            Object.assign(existingSeat, seatDto);
+            await manager.save("Seat", existingSeat);
           } else {
             const newSeat = manager.create("Seat", {
               ...seatDto,
               hallId: cinemaHall.hallId,
             });
 
-            cinemaHall.seats.push(newSeat);
+            await manager.save("Seat", newSeat);
           }
         }
       }
 
-      try {
-        await manager.save("CinemaHall", cinemaHall);
+      cinemaHall.seats = await manager.find("Seat", {
+        where: { hallId, deletedAt: null },
+      });
 
-        return manager.findOne("CinemaHall", {
-          where: { hallId },
-          relations: ["seats"],
-          withDeleted: false,
-        });
-      } catch (error) {
-        if (error.code === "23505") {
-          throw new Error(CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS);
-        }
-        throw error;
-      }
+      return cinemaHall;
     });
   }
 
-  async deleteCinemaHall(hallId) {
+  deleteCinemaHall(hallId) {
     return this.#dataSource.transaction(async (manager) => {
       const hall = await manager
         .getRepository("CinemaHall")
         .createQueryBuilder("cinemahall")
-        .leftJoinAndSelect("cinemahall.seats", "seat", "seat.deletedAt IS NULL")
-        .leftJoinAndSelect(
-          "cinemahall.showtimes",
-          "showtime",
-          "showtime.deletedAt IS NULL"
-        )
-        .where("cinemahall.hallId = :cinemaHallId", { hallId })
+        .where("cinemahall.hallId = :hallId", { hallId })
         .andWhere("cinemahall.deletedAt IS NULL")
+        .setLock("pessimistic_write")
         .getOne();
 
       if (!hall) throw new Error(CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND);
+
+      hall.showtimes = await manager
+        .getRepository("Showtime")
+        .find({ where: { hallId, deletedAt: null } });
 
       if (hall.showtimes.length > 0) {
         throw new Error(CinemaHallErrorMessages.CINEMA_HALL_DELETE_ERROR);
       }
 
-      for (const seat of hall.seats) {
-        await manager.softDelete("Seat", { seatId: seat.seatId });
+      hall.seats = await manager
+        .getRepository("Seat")
+        .find({ where: { hallId, deletedAt: null } });
+
+      const seatIdsToDelete = hall.seats.map((s) => s.seatId);
+
+      if (seatIdsToDelete.length > 0) {
+        await manager.softDelete("Seat", { seatId: In(seatIdsToDelete) });
       }
 
       await manager.softDelete("CinemaHall", { hallId });
