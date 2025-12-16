@@ -16,6 +16,7 @@ class TariffRepository {
     return this.#repo.find({
       select: ["tariffId", "name", "startTime", "endTime", "priceMultiplier"],
       where: { deletedAt: null },
+      order: { startTime: "ASC" },
     });
   }
 
