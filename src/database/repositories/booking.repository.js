@@ -67,12 +67,22 @@ export class BookingRepository {
       const showtime = await manager
         .getRepository("Showtime")
         .createQueryBuilder("showtime")
-        .select(["showtime.showtimeId"])
+        .leftJoinAndSelect(
+          "showtime.tariff",
+          "tariff",
+          "tariff.deleted_at IS NULL"
+        )
+        .select([
+          "showtime.showtimeId",
+          "showtime.tariffId",
+          "tariff.tariffId",
+          "tariff.priceMultiplier",
+        ])
         .where("showtime.showtime_id = :showtimeId", { showtimeId })
         .andWhere("showtime.deleted_at IS NULL")
         .getOne();
 
-      if (!showtime) {
+      if (!showtime || !showtime.tariff) {
         throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
       }
 
@@ -102,37 +112,18 @@ export class BookingRepository {
         throw new Error("Some seats not found");
       }
 
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      const currentTime = `${hh}:${mm}:${ss}`;
-
-      const tariff = await manager
-        .getRepository("Tariff")
-        .createQueryBuilder("tariff")
-        .select(["tariff.tariffId", "tariff.priceMultiplier"])
-        .where("tariff.deleted_at IS NULL")
-        .andWhere(
-          ":currentTime BETWEEN tariff.start_time AND tariff.end_time",
-          { currentTime }
-        )
-        .getOne();
-
-      if (!tariff) {
-        throw new Error("No active tariff found");
-      }
-
       let totalPrice = 0;
       const bookingSeatsData = seats.map((seat) => {
         const finalPrice =
-          parseFloat(seat.basePrice) * parseFloat(tariff.priceMultiplier || 1);
+          parseFloat(seat.basePrice) *
+          parseFloat(showtime.tariff.priceMultiplier);
+
         totalPrice += finalPrice;
 
         return {
           showtimeId,
           seatId: seat.seatId,
-          tariffId: tariff.tariffId,
+          tariffId: showtime.tariff.tariffId,
           finalPrice,
         };
       });
