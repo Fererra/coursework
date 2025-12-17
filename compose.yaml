@@ -23,7 +23,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: testcinemadb
+      POSTGRES_DB: cinema
     networks:
       - backend
     expose:

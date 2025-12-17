@@ -8,4 +8,4 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 COPY src ./src
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "src/app.js", "--watch"]
+CMD ["node", "src/server.js", "--watch"]
