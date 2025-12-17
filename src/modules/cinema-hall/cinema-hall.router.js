@@ -82,6 +82,7 @@ const handleError = (res, error) => {
   const statusMap = {
     [CinemaHallErrorMessages.CINEMA_HALL_NOT_FOUND]: 404,
     [CinemaHallErrorMessages.CINEMA_HALL_ALREADY_EXISTS]: 409,
+    [CinemaHallErrorMessages.CINEMA_HALL_DELETE_ERROR]: 400,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });
