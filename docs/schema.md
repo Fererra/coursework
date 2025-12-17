@@ -18,7 +18,7 @@
 | password | VARCHAR(255) | NOT NULL | Хешований пароль |
 | role | ENUM('user', 'admin') | DEFAULT 'user' | Роль користувача |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Зв'язки:
@@ -41,7 +41,7 @@
 | release_year | INT | CHECK (> 0), NOT NULL | Рік випуску |
 | description | TEXT | | Опис фільму |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Зв'язки:
@@ -61,7 +61,7 @@
 | genre_id | SERIAL | PRIMARY KEY | Ідентифікатор жанру |
 | name | VARCHAR | UNIQUE, NOT NULL | Назва жанру |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Зв'язки:
@@ -78,12 +78,12 @@
 | Стовпець | Тип | Обмеження | Опис |
 |------------------|--------------|--------------------------|--------------------------|
 | tariff_id | SERIAL | PRIMARY KEY | Ідентифікатор тарифу |
-| name | VARCHAR(30) | NOT NULL | Назва тарифу |
+| name | VARCHAR(30) | UNIQUE, NOT NULL | Назва тарифу |
 | start_time | TIME | NOT NULL | Час початку дії тарифу |
 | end_time | TIME | NOT NULL, CHECK (start_time < end_time) | Час завершення дії тарифу |
 | price_multiplier | DECIMAL(3,2) | CHECK (> 0), NOT NULL | Множник ціни |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Зв'язки:
@@ -106,7 +106,7 @@
 | seat_type | ENUM('standard', 'VIP') | NOT NULL | Тип місця |
 | base_price | DECIMAL(6,2) | CHECK (> 0), NOT NULL | Базова ціна |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Обмеження:
@@ -131,7 +131,7 @@
 | hall_number | INT | UNIQUE, NOT NULL, CHECK (> 0) | Номер залу |
 | capacity | INT | CHECK (> 0), NOT NULL | Місткість залу |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Зв'язки:
@@ -153,18 +153,25 @@
 | movie_id | INT | NOT NULL | Ідентифікатор фільму |
 | show_date | DATE | NOT NULL | Дата сеансу |
 | show_time | TIME | NOT NULL | Час сеансу |
+| tarrif_id | INT | NOT NULL | Ідентифікатор тарифу |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
 | deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
 
 Обмеження:
 
 - `UNIQUE` на (`hall_id`, `show_date`, `show_time`)
 
+Індекси:
+
+- `idx_showtime_movie_id` на `(movie_id) WHERE deleted_at IS NULL` (забезпечує швидкий пошук усіх активних сеансів для конкретного фільму)
+- `idx_showtime_hall_id` на `(hall_id) WHERE deleted_at IS NULL` (забезпечує швидкий пошук усіх активних сеансів для конкретного залу)
+
 Зв'язки:
 
 - Багато-до-одного з `movie` (сеанс належить одному фільму)
 - Багато-до-одного з `cinema_hall` (сеанс проходить в одному залі)
+- Багато-до-одного з `tariff` (сеанс має лише один тариф)
 - Один-до-багатьох з `booking` (сеанс може мати кілька бронювань)
 - Один-до-багатьох з `booking_seat` (сеанс може включати кілька заброньованих місць).
 
@@ -178,11 +185,17 @@
 | Стовпець | Тип | Обмеження | Опис |
 |---------------|--------------|--------------------------|--------------------------|
 | booking_id | SERIAL | PRIMARY KEY | Ідентифікатор бронювання |
+| user_id | INT | NOT NULL | Ідентифікатор користувача |
+| showtime_id | INT | NOT NULL | Ідентифікатор сеансу |
 | total_price | DECIMAL(8,2) | CHECK (>= 0), NOT NULL | Загальна ціна |
 | status | ENUM('pending', 'confirmed', 'cancelled') | DEFAULT 'pending' | Статус бронювання |
 | booking_date | TIMESTAMP | DEFAULT NOW() | Час створення бронювання |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
-| deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
+
+Індекси:
+
+- `idx_booking_user_id` на `(user_id)` (забезпечує швидкий пошук усіх бронювань конкретного користувача)
+- `idx_booking_showtime_id` на `(showtime_id)` (забезпечує швидкий пошук усіх бронювань для конкретного сеансу)
 
 Зв'язки:
 
@@ -199,17 +212,25 @@
 Стовпці:
 | Стовпець | Тип | Обмеження | Опис |
 |--------------|--------------|--------------------------|--------------------------|
-| showtime_id | INT | PRIMARY KEY | Ідентифікатор сеансу |
-| seat_id | INT | PRIMARY KEY | Ідентифікатор місця |
+| booking_seat_id | SERIAL | PRIMARY KEY | Ідентифікатор заброньованого місця |
+| showtime_id | INT | NOT NULL | Ідентифікатор сеансу |
+| seat_id | INT | NOT NULL | Ідентифікатор місця |
 | booking_id | INT | NOT NULL | Ідентифікатор бронювання |
 | tariff_id | INT | NOT NULL | Ідентифікатор тарифу |
 | final_price | DECIMAL(7,2) | CHECK (> 0), NOT NULL | Фінальна ціна |
+| status | ENUM('active', 'cancelled') | DEFAULT 'active' | Статус місця в бронюванні |
 | created_at | TIMESTAMP | DEFAULT NOW() | Час створення запису |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Час оновлення запису |
-| deleted_at | TIMESTAMP | NULL | Мітка часу видалення |
+| updated_at | TIMESTAMP | auto-updated | Час оновлення запису |
+
+Індекси:
+
+- `partial_unique_showtime_seat` на `(showtime_id, seat_id) WHERE status = 'active'` (забезпечує унікальність активного бронювання місця на один сеанс)
+- `idx_booking_seat_tariff_id_active` на `(tariff_id) WHERE status = 'active'` (забезпечує швидкий пошук активних бронювань по тарифу)
+- `idx_booking_seat_booking_id` на `(booking_id)` (забезпечує швидкий пошук всіх місць у конкретному бронюванні)
 
 Зв'язки:
 
-- Композитний ключ: багато-до-одного з `showtime` + багато-до-одного з `seat` (місце може бути заброньоване один раз на сеанс)
+- Багато-до-одного з `showtime` (місце належить одному сеансу)
+- Багато-до-одного з `seat` (кожен запис бронювання місця посилається на одне фізичне місце в залі)
 - Багато-до-одного з `booking` (місце належить одному бронюванню)
 - Багато-до-одного з `tariff` (місце має один тариф)
