@@ -5,6 +5,7 @@ import { updateMovieDto } from "./dto/update-movie.dto.js";
 import { movieService } from "./movie.service.js";
 import { MovieErrorMessages } from "./movie.errors.js";
 import { paginationSchema } from "../../common/validation/pagination.schema.js";
+import { GenreErrorMessages } from "../genre/genre.errors.js";
 
 const movieRouter = Router();
 
@@ -73,6 +74,7 @@ const handleError = (res, error) => {
     [MovieErrorMessages.MOVIE_NOT_FOUND]: 404,
     [MovieErrorMessages.MOVIE_ALREADY_EXISTS]: 409,
     [MovieErrorMessages.MOVIE_DELETE_ERROR]: 400,
+    [GenreErrorMessages.SOME_GENRES_NOT_FOUND]: 400,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });
