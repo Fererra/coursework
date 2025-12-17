@@ -162,18 +162,25 @@ export class BookingRepository {
   getBookingById(bookingId) {
     return this.#repo
       .createQueryBuilder("booking")
-      .leftJoinAndSelect("booking.showtime", "showtime")
-      .leftJoinAndSelect("showtime.movie", "movie")
-      .leftJoinAndSelect("booking.seats", "bookingSeat")
-      .leftJoinAndSelect("bookingSeat.seat", "seat")
+      .leftJoinAndSelect(
+        "booking.showtime",
+        "showtime",
+        "showtime.deletedAt IS NULL"
+      )
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .leftJoinAndSelect(
+        "booking.seats",
+        "bookingSeat",
+        "bookingSeat.status != :cancelledStatus",
+        {
+          cancelledStatus: BookingSeatStatus.CANCELLED,
+        }
+      )
+      .leftJoinAndSelect("bookingSeat.seat", "seat", "seat.deletedAt IS NULL")
       .where("booking.bookingId = :bookingId", { bookingId })
       .andWhere("booking.status != :deletedStatus", {
         deletedStatus: BookingStatus.CANCELLED,
       })
-      .andWhere("showtime.deletedAt IS NULL")
-      .andWhere("movie.deletedAt IS NULL")
-      .andWhere("bookingSeat.deletedAt IS NULL")
-      .andWhere("seat.deletedAt IS NULL")
       .select([
         "booking.bookingId",
         "booking.totalPrice",

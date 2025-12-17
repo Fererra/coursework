@@ -1,5 +1,6 @@
 import { bookingRepository } from "../../database/repositories/booking.repository.js";
 import { buildPaginationResponse } from "../../common/utils/pagination.util.js";
+import { BookingErrorMessages } from "./booking.errors.js";
 
 export class BookingService {
   #bookingRepository;
