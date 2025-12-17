@@ -1,5 +1,6 @@
 import { genreRepository } from "../../database/repositories/genre.repository.js";
 import { handleDatabaseError } from "../../common/utils/db-errors.js";
+import { GenreErrorMessages } from "./genre.errors.js";
 
 class GenreService {
   #genreRepository;
