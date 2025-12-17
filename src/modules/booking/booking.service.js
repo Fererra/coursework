@@ -13,17 +13,6 @@ export class BookingService {
     return this.#bookingRepository.getBookingsByUserId(userId, page, pageSize);
   }
 
-  async getBookingsByShowtime(showtimeId, page, pageSize) {
-    const [bookings, total] =
-      await this.#bookingRepository.getBookingsByShowtime(
-        showtimeId,
-        page,
-        pageSize
-      );
-
-    return buildPaginationResponse(bookings, total, page, pageSize);
-  }
-
   getBookingsByShowtime(showtimeId) {
     return this.#bookingRepository.getBookingsByShowtime(showtimeId);
   }

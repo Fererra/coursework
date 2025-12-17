@@ -78,8 +78,12 @@ class ShowtimeService {
     };
   }
 
-  getBookings(showtimeId) {
-    return this.#bookingService.getBookingsByShowtime(showtimeId);
+  async getBookings(showtimeId) {
+    const bookings = await this.#bookingService.getBookingsByShowtime(
+      showtimeId
+    );
+
+    return buildPaginationResponse(bookings, total, page, pageSize);
   }
 
   bookSeats(showtimeId, seatIds, userId) {
