@@ -60,7 +60,7 @@ export const UserEntity = new EntitySchema({
     bookings: {
       type: "one-to-many",
       target: "Booking",
-      inverseSide: "customer",
+      inverseSide: "user",
     },
   },
 });
