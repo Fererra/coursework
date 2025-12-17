@@ -1,5 +1,4 @@
 import express from "express";
-import AppDataSource from "./database/data-source.js";
 import authRouter from "./modules/auth/auth.router.js";
 import usersRouter from "./modules/users/users.router.js";
 import movieRouter from "./modules/movie/movie.router.js";
@@ -24,12 +23,4 @@ app.use("/showtimes", showtimeRouter);
 app.use("/bookings", bookingRouter);
 app.use("/reports", reportsRouter);
 
-AppDataSource.initialize()
-  .then(() => {
-    app.listen(3000, () => {
-      console.log("Server is running on port 3000");
-    });
-  })
-  .catch((error) =>
-    console.log("Error during Data Source initialization:", error)
-  );
+export default app;

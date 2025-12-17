@@ -1,4 +1,6 @@
 import { tariffRepository } from "../../database/repositories/tariff.repository.js";
+import { handleDatabaseError } from "../../common/utils/db-errors.js";
+import { TariffErrorMessages } from "./tariff.errors.js";
 
 class TariffService {
   #tariffRepository;
