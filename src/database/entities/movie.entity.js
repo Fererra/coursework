@@ -33,6 +33,7 @@ export const MovieEntity = new EntitySchema({
     },
     description: {
       type: "text",
+      default: "No description",
     },
     createdAt: {
       name: "created_at",
