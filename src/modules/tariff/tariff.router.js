@@ -61,6 +61,7 @@ const handleError = (res, error) => {
   const statusMap = {
     [TariffErrorMessages.TARIFF_NOT_FOUND]: 404,
     [TariffErrorMessages.TARIFF_ALREADY_EXISTS]: 409,
+    [TariffErrorMessages.TARIFF_HAS_BOOKINGS]: 400,
   };
 
   if (error.isJoi) return res.status(400).json({ error: error.message });
