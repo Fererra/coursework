@@ -1,0 +1,231 @@
+import AppDataSource from "../data-source.js";
+import { BookingErrorMessages } from "../../modules/booking/booking.errors.js";
+import { BookingStatus } from "../../modules/booking/booking-status.js";
+import { BookingSeatStatus } from "../../modules/booking/booking-seat-status.js";
+import { In } from "typeorm";
+
+export class BookingRepository {
+  #repo;
+  #dataSource;
+
+  constructor(dataSource) {
+    this.#repo = dataSource.getRepository("Booking");
+    this.#dataSource = dataSource;
+  }
+
+  getBookingsByUserId(userId, page, pageSize) {
+    return this.#repo
+      .createQueryBuilder("booking")
+      .leftJoinAndSelect("booking.showtime", "showtime")
+      .leftJoinAndSelect("showtime.movie", "movie")
+      .leftJoinAndSelect("booking.seats", "bookingSeat")
+      .leftJoinAndSelect("bookingSeat.seat", "seat")
+      .where("booking.user = :userId", { userId })
+      .select([
+        "booking.bookingId",
+        "booking.totalPrice",
+        "booking.status",
+        "booking.bookingDate",
+        "showtime.showtimeId",
+        "showtime.showDate",
+        "showtime.showTime",
+        "movie.movieId",
+        "movie.title",
+        "bookingSeat.finalPrice",
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+      ])
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+  }
+
+  getBookingsByShowtime(showtimeId, page, pageSize) {
+    return this.#repo
+      .createQueryBuilder("booking")
+      .leftJoinAndSelect("booking.seats", "bookingSeat")
+      .leftJoinAndSelect("bookingSeat.seat", "seat")
+      .where("booking.showtime = :showtimeId", { showtimeId })
+      .select([
+        "booking.bookingId",
+        "booking.totalPrice",
+        "booking.status",
+        "booking.bookingDate",
+        "bookingSeat.finalPrice",
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+      ])
+      .orderBy("booking.bookingDate", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+  }
+
+  bookSeats(showtimeId, seatIds, userId) {
+    return this.#dataSource.transaction(async (manager) => {
+      const showtime = await manager
+        .getRepository("Showtime")
+        .createQueryBuilder("showtime")
+        .leftJoinAndSelect(
+          "showtime.tariff",
+          "tariff",
+          "tariff.deleted_at IS NULL"
+        )
+        .select([
+          "showtime.showtimeId",
+          "showtime.tariffId",
+          "tariff.tariffId",
+          "tariff.priceMultiplier",
+        ])
+        .where("showtime.showtime_id = :showtimeId", { showtimeId })
+        .andWhere("showtime.deleted_at IS NULL")
+        .getOne();
+
+      if (!showtime || !showtime.tariff) {
+        throw new Error(ShowtimeErrorMessages.SHOWTIME_NOT_FOUND);
+      }
+
+      const existingSeats = await manager
+        .getRepository("BookingSeat")
+        .createQueryBuilder("bs")
+        .select(["bs.seatId"])
+        .where("bs.showtime_id = :showtimeId", { showtimeId })
+        .andWhere("bs.seat_id IN (:...seatIds)", { seatIds })
+        .andWhere("bs.status = :status", { status: BookingSeatStatus.ACTIVE })
+        .getMany();
+
+      if (existingSeats.length > 0) {
+        const takenIds = existingSeats.map((s) => s.seatId);
+        throw new Error(`Seats already booked: ${takenIds.join(", ")}`);
+      }
+
+      const seats = await manager
+        .getRepository("Seat")
+        .createQueryBuilder("seat")
+        .select(["seat.seatId", "seat.basePrice"])
+        .where("seat.seat_id IN (:...seatIds)", { seatIds })
+        .andWhere("seat.deleted_at IS NULL")
+        .getMany();
+
+      if (seats.length !== seatIds.length) {
+        throw new Error("Some seats not found");
+      }
+
+      let totalPrice = 0;
+      const bookingSeatsData = seats.map((seat) => {
+        const finalPrice =
+          parseFloat(seat.basePrice) *
+          parseFloat(showtime.tariff.priceMultiplier);
+
+        totalPrice += finalPrice;
+
+        return {
+          showtimeId,
+          seatId: seat.seatId,
+          tariffId: showtime.tariff.tariffId,
+          finalPrice,
+        };
+      });
+
+      const booking = manager.create("Booking", {
+        user: { userId },
+        showtime: { showtimeId },
+        totalPrice,
+      });
+
+      await manager.save("Booking", booking);
+
+      const bookingSeats = bookingSeatsData.map((bs) =>
+        manager.create("BookingSeat", {
+          ...bs,
+          bookingId: booking.bookingId,
+        })
+      );
+
+      await manager.save("BookingSeat", bookingSeats);
+
+      return {
+        bookingId: booking.bookingId,
+        totalPrice,
+        status: booking.status,
+        seats: bookingSeats.map((s) => ({
+          seatId: s.seatId,
+          finalPrice: s.finalPrice,
+        })),
+      };
+    });
+  }
+
+  getBookingById(bookingId) {
+    return this.#repo
+      .createQueryBuilder("booking")
+      .leftJoinAndSelect(
+        "booking.showtime",
+        "showtime",
+        "showtime.deletedAt IS NULL"
+      )
+      .leftJoinAndSelect("showtime.movie", "movie", "movie.deletedAt IS NULL")
+      .leftJoinAndSelect(
+        "booking.seats",
+        "bookingSeat",
+        "bookingSeat.status != :cancelledStatus",
+        {
+          cancelledStatus: BookingSeatStatus.CANCELLED,
+        }
+      )
+      .leftJoinAndSelect("bookingSeat.seat", "seat", "seat.deletedAt IS NULL")
+      .where("booking.bookingId = :bookingId", { bookingId })
+      .andWhere("booking.status != :deletedStatus", {
+        deletedStatus: BookingStatus.CANCELLED,
+      })
+      .select([
+        "booking.bookingId",
+        "booking.totalPrice",
+        "booking.status",
+        "booking.bookingDate",
+        "showtime.showtimeId",
+        "showtime.showDate",
+        "showtime.showTime",
+        "movie.movieId",
+        "movie.title",
+        "bookingSeat.finalPrice",
+        "seat.seatId",
+        "seat.rowNumber",
+        "seat.seatNumber",
+      ])
+      .getOne();
+  }
+
+  cancelBooking(bookingId) {
+    return this.#dataSource.transaction(async (manager) => {
+      const booking = await manager.findOne("Booking", {
+        where: {
+          bookingId,
+          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!booking) throw new Error(BookingErrorMessages.BOOKING_NOT_FOUND);
+
+      await manager.update(
+        "Booking",
+        { bookingId },
+        { status: BookingStatus.CANCELLED }
+      );
+
+      await manager.update(
+        "BookingSeat",
+        { bookingId, status: BookingSeatStatus.ACTIVE },
+        { status: BookingSeatStatus.CANCELLED }
+      );
+
+      return { message: "Booking cancelled successfully" };
+    });
+  }
+}
+
+export const bookingRepository = new BookingRepository(AppDataSource);

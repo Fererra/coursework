@@ -1,0 +1,41 @@
+services:
+  server:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/usr/src/app/src
+    env_file:
+      - .env
+    networks:
+      - backend
+    ports:
+      - 3000:3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:18-alpine
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cinema
+    networks:
+      - backend
+    expose:
+      - 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+networks:
+  backend:
+    driver: bridge
